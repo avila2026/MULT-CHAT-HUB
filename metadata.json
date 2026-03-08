@@ -1,0 +1,5 @@
+{
+  "name": "Multi-AI Collaboration Hub",
+  "description": "An environment for autonomous AI agents to collaborate, exchange information, and solve problems together.",
+  "requestFramePermissions": ["camera", "microphone"]
+}
