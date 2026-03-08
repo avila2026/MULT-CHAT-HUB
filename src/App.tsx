@@ -33,7 +33,8 @@ export default function App() {
   
   const [externalAgentURL, setExternalAgentURL] = useState('http://127.0.0.1:3000');
   const [pairingCode, setPairingCode] = useState('');
-
+  const [searchAgentTerm, setSearchAgentTerm] = useState('');
+  
   const [thinkingLevel, setThinkingLevel] = useState<'LOW' | 'HIGH'>('HIGH');
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -234,8 +235,18 @@ export default function App() {
   };
 
   const transcribeAudio = async () => {
-    // Placeholder for audio transcription logic
-    setMessages(prev => [...prev, { id: Date.now(), sender: 'Sistema', text: 'Funcionalidade de transcrição de áudio acionada.' }]);
+    if (!('webkitSpeechRecognition' in window)) {
+      setMessages(prev => [...prev, { id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Reconhecimento de voz não suportado neste navegador.' }]);
+      return;
+    }
+    const recognition = new (window as any).webkitSpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+    };
+    recognition.start();
+    setMessages(prev => [...prev, { id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Ouvindo... Fale agora.' }]);
   };
 
   const generateSpeech = async () => {
@@ -468,22 +479,31 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <ul className="text-sm text-zinc-600 space-y-4">
-                {agents.map((agent, i) => (
-                  <li key={i} className="bg-zinc-100 p-3 rounded-lg space-y-1">
-                    <div className="flex justify-between items-center">
-                      <div className="font-semibold">{agent.name}</div>
-                      <button onClick={() => startEdit(i)} className="text-xs text-indigo-600 hover:underline">Editar</button>
-                    </div>
-                    <div className="text-xs text-zinc-500">Provedor: {agent.provider} | Status: {agent.status}</div>
-                    <div className="text-xs">{agent.description}</div>
-                    <div className="text-xs font-semibold mt-1">Permissões:</div>
-                    <div className="text-xs text-zinc-500">{agent.permissions.join(', ')}</div>
-                    <div className="text-xs font-semibold mt-1">Ferramentas:</div>
-                    <div className="text-xs text-zinc-500">{agent.tools.map(t => t.name).join(', ')}</div>
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-4">
+                <input 
+                  type="text" 
+                  value={searchAgentTerm}
+                  onChange={(e) => setSearchAgentTerm(e.target.value)}
+                  className="w-full p-2 border border-zinc-300 rounded-lg text-sm"
+                  placeholder="Pesquisar agentes..."
+                />
+                <ul className="text-sm text-zinc-600 space-y-4 max-h-[400px] overflow-y-auto">
+                  {agents.filter(a => a.name.toLowerCase().includes(searchAgentTerm.toLowerCase()) || a.specialty.toLowerCase().includes(searchAgentTerm.toLowerCase())).map((agent, i) => (
+                    <li key={i} className="bg-zinc-100 p-3 rounded-lg space-y-1">
+                      <div className="flex justify-between items-center">
+                        <div className="font-semibold">{agent.name}</div>
+                        <button onClick={() => startEdit(i)} className="text-xs text-indigo-600 hover:underline">Editar</button>
+                      </div>
+                      <div className="text-xs text-zinc-500">Provedor: {agent.provider} | Status: {agent.status}</div>
+                      <div className="text-xs">{agent.description}</div>
+                      <div className="text-xs font-semibold mt-1">Permissões:</div>
+                      <div className="text-xs text-zinc-500">{agent.permissions.join(', ')}</div>
+                      <div className="text-xs font-semibold mt-1">Ferramentas:</div>
+                      <div className="text-xs text-zinc-500">{agent.tools.map(t => t.name).join(', ')}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
 
