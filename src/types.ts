@@ -14,3 +14,24 @@ export interface Agent {
   thinkingLevel: 'LOW' | 'HIGH';
   tools: Tool[];
 }
+
+export interface Message {
+  id: number;
+  channel: string;
+  sender: string;
+  text: string;
+}
+
+export interface Channel {
+  name: string;
+  members: string[];
+  isPrivate: boolean;
+}
+
+export interface Task {
+  id: number;
+  title: string;
+  description: string;
+  deadline: string;
+  status: string;
+}
