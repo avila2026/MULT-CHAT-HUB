@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+release/
+server-dist/
