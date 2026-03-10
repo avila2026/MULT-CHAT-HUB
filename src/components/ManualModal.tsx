@@ -59,8 +59,20 @@ export default function ManualModal({ isOpen, onClose }: ManualModalProps) {
                      <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Cria e acopla uma nova task no painel central do usuário.</p>
                   </div>
                   <div className="mb-3">
+                     <span className="text-emerald-400 font-bold">/concluir_tarefa</span> "ID"
+                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Força a conclusão visual de uma das tarefas da Sidebar baseada no número ID.</p>
+                  </div>
+                  <div className="mb-3">
+                     <span className="text-emerald-400 font-bold">/remover_tarefa</span> "ID"
+                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Remove definitivamente a tarefa do Estado do hub baseado no seu ID.</p>
+                  </div>
+                  <div className="mb-3">
                      <span className="text-emerald-400 font-bold">/analisar_dados</span> {"{"}\"key\":\"value\"{"}"} "Categoria"
                      <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Salva trechos valiosos JSON para uso em memória cache rápida.</p>
+                  </div>
+                  <div className="mb-3">
+                     <span className="text-emerald-400 font-bold">/limpar_dados</span>
+                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Reseta todos os dados analíticos temporários da visualização JSON.</p>
                   </div>
                   <div>
                      <span className="text-emerald-400 font-bold">/gerar_relatorio</span> "Conteudo finalizado em texto plano ou md" "Formato"
@@ -87,7 +99,18 @@ export default function ManualModal({ isOpen, onClose }: ManualModalProps) {
                      <code className="block bg-zinc-900 text-zinc-300 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap">
                        /use_tool nome_da_ferramenta {"{"}"param1": "valor"{"}"}
                      </code>
-                     <p className="text-xs text-zinc-500 mt-3 pt-3 border-t border-zinc-200">Exemplo prático: <span className="font-mono text-zinc-700">/use_tool github_list_repos {"{"}"username": "zJeanx"{"}"}</span></p>
+                     <p className="text-xs text-zinc-500 mt-3 pt-3 border-t border-zinc-200">Exemplo prático: <span className="font-mono text-zinc-700">/use_tool get_current_time {"{"}{"}"}</span></p>
+                     
+                     <div className="mt-4 pt-4 border-t border-zinc-200">
+                       <p className="text-sm font-semibold mb-2">APIs Locais Disponíveis (Express Server):</p>
+                       <ul className="text-xs space-y-2 font-mono">
+                         <li><span className="text-indigo-600 font-bold">get_current_time</span> (Sem Args) - Retorna Data e Hora</li>
+                         <li><span className="text-indigo-600 font-bold">calculate_math</span> {"{ \"expression\": \"2 + 2\" }"} - Resolve expressões usando o backend</li>
+                         <li><span className="text-indigo-600 font-bold">store_memory</span> {"{ \"key\": \"x\", \"value\": \"y\" }"} - Salva uma string na memoria RAM do server</li>
+                         <li><span className="text-indigo-600 font-bold">retrieve_memory</span> {"{ \"key\": \"x\" }"} - Retorna a string salva no server</li>
+                         <li><span className="text-indigo-600 font-bold">github_list_repos</span> e <span className="text-indigo-600 font-bold">github_create_issue</span></li>
+                       </ul>
+                     </div>
                   </div>
                 </div>
               </section>

@@ -112,6 +112,29 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         } catch {}
       }
     }
+
+    if (responseText.includes('/concluir_tarefa')) {
+      const match = responseText.match(/\/concluir_tarefa\s+"?(\d+)"?/);
+      if (match) {
+        const taskId = parseInt(match[1], 10);
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'concluído' } : t));
+        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Tarefa ${taskId} marcada como concluída.` });
+      }
+    }
+
+    if (responseText.includes('/remover_tarefa')) {
+      const match = responseText.match(/\/remover_tarefa\s+"?(\d+)"?/);
+      if (match) {
+        const taskId = parseInt(match[1], 10);
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Tarefa ${taskId} removida.` });
+      }
+    }
+
+    if (responseText.includes('/limpar_dados')) {
+       setDataCache({});
+       addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Todos os dados em cache de análise visual foram limpos.` });
+    }
   };
 
   const addMessage = (msg: Message) => {
