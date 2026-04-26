@@ -34,36 +34,63 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
-var ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+var OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+var OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b';
+var SYSTEM_INSTRUCTION = "Você é o Multi-AI Collaboration Hub, um sistema que orquestra múltiplas IAs. Você simula uma equipe colaborativa com agentes especializados. Responda como um agente, mantendo o estado. Detecte comandos prefixados com '/' (ex: /criar_tarefa, /concluir_tarefa, /remover_tarefa, /limpar_dados, /analisar_dados, /gerar_relatorio) nos seus outputs e execute-os logicamente. Exemplo de uso de ID numérico: /concluir_tarefa \"1\". Você também pode usar ferramentas externas via comando '/use_tool [nome] [args_json]'. As ferramentas ativas incluem: get_current_time (sem args), calculate_math (expressao matemática na string 'expression'), store_memory/retrieve_memory (com 'key' e 'value'), etc.";
 export var handleChat = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, input, _b, model, _c, thinking, response, error_1;
-    return __generator(this, function (_d) {
-        switch (_d.label) {
+    var _a, input, _b, model, _c, thinking, numPredict, ollamaResponse, err_1, text, data, error_1;
+    var _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
             case 0:
-                _d.trys.push([0, 2, , 3]);
-                _a = req.body, input = _a.input, _b = _a.model, model = _b === void 0 ? 'gemini-3.1-pro-preview' : _b, _c = _a.thinking, thinking = _c === void 0 ? 'HIGH' : _c;
+                _e.trys.push([0, 8, , 9]);
+                _a = req.body, input = _a.input, _b = _a.model, model = _b === void 0 ? OLLAMA_MODEL : _b, _c = _a.thinking, thinking = _c === void 0 ? 'HIGH' : _c;
                 if (!input) {
                     return [2 /*return*/, res.status(400).json({ error: 'Input form is required' })];
                 }
-                return [4 /*yield*/, ai.models.generateContent({
-                        model: model,
-                        contents: input,
-                        config: {
-                            thinkingConfig: {
-                                thinkingLevel: thinking === 'HIGH' ? ThinkingLevel.HIGH : ThinkingLevel.LOW
-                            },
-                            systemInstruction: "Você é o Multi-AI Collaboration Hub, um sistema que orquestra múltiplas IAs. Você simula uma equipe colaborativa com agentes especializados. Responda como um agente, mantendo o estado. Detecte comandos prefixados com '/' (ex: /criar_tarefa, /concluir_tarefa, /remover_tarefa, /limpar_dados, /analisar_dados, /gerar_relatorio) nos seus outputs e execute-os logicamente. Exemplo de uso de ID numérico: /concluir_tarefa \"1\". Você também pode usar ferramentas externas via comando '/use_tool [nome] [args_json]'. As ferramentas ativas incluem: get_current_time (sem args), calculate_math (expressao matemática na string 'expression'), store_memory/retrieve_memory (com 'key' e 'value'), etc."
-                        }
-                    })];
+                numPredict = thinking === 'HIGH' ? 2048 : 512;
+                ollamaResponse = void 0;
+                _e.label = 1;
             case 1:
-                response = _d.sent();
-                return [2 /*return*/, res.json({ text: response.text || 'Sem resposta das APIs.' })];
+                _e.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, fetch("".concat(OLLAMA_HOST, "/api/chat"), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                { role: 'system', content: SYSTEM_INSTRUCTION },
+                                { role: 'user', content: input }
+                            ],
+                            stream: false,
+                            options: { num_predict: numPredict }
+                        })
+                    })];
             case 2:
-                error_1 = _d.sent();
+                ollamaResponse = _e.sent();
+                return [3 /*break*/, 4];
+            case 3:
+                err_1 = _e.sent();
+                return [2 /*return*/, res.status(503).json({
+                        error: "Ollama n\u00E3o acess\u00EDvel em ".concat(OLLAMA_HOST, ". Inicie com 'ollama serve' e baixe o modelo: 'ollama pull ").concat(model, "'. Detalhe: ").concat(err_1.message)
+                    })];
+            case 4:
+                if (!!ollamaResponse.ok) return [3 /*break*/, 6];
+                return [4 /*yield*/, ollamaResponse.text()];
+            case 5:
+                text = _e.sent();
+                return [2 /*return*/, res.status(ollamaResponse.status).json({
+                        error: "Ollama respondeu ".concat(ollamaResponse.status, ": ").concat(text)
+                    })];
+            case 6: return [4 /*yield*/, ollamaResponse.json()];
+            case 7:
+                data = _e.sent();
+                return [2 /*return*/, res.json({ text: ((_d = data === null || data === void 0 ? void 0 : data.message) === null || _d === void 0 ? void 0 : _d.content) || 'Sem resposta do modelo.' })];
+            case 8:
+                error_1 = _e.sent();
                 console.error('Error generic chat handler:', error_1);
                 return [2 /*return*/, res.status(500).json({ error: error_1.message || 'Internal Server Error' })];
-            case 3: return [2 /*return*/];
+            case 9: return [2 /*return*/];
         }
     });
 }); };
