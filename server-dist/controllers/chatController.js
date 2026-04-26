@@ -34,60 +34,105 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+import { GoogleGenAI } from '@google/genai';
+var GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+var GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 var OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 var OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b';
 var SYSTEM_INSTRUCTION = "Você é o Multi-AI Collaboration Hub, um sistema que orquestra múltiplas IAs. Você simula uma equipe colaborativa com agentes especializados. Responda como um agente, mantendo o estado. Detecte comandos prefixados com '/' (ex: /criar_tarefa, /concluir_tarefa, /remover_tarefa, /limpar_dados, /analisar_dados, /gerar_relatorio) nos seus outputs e execute-os logicamente. Exemplo de uso de ID numérico: /concluir_tarefa \"1\". Você também pode usar ferramentas externas via comando '/use_tool [nome] [args_json]'. As ferramentas ativas incluem: get_current_time (sem args), calculate_math (expressao matemática na string 'expression'), store_memory/retrieve_memory (com 'key' e 'value'), etc.";
+var gemini = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+function chatViaGemini(input, thinking, model) {
+    return __awaiter(this, void 0, void 0, function () {
+        var response;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, gemini.models.generateContent({
+                        model: model,
+                        contents: input,
+                        config: {
+                            systemInstruction: SYSTEM_INSTRUCTION,
+                            thinkingConfig: { thinkingBudget: thinking === 'HIGH' ? 2048 : 512 }
+                        }
+                    })];
+                case 1:
+                    response = _a.sent();
+                    return [2 /*return*/, response.text || 'Sem resposta do modelo.'];
+            }
+        });
+    });
+}
+function chatViaOllama(input, thinking, model) {
+    return __awaiter(this, void 0, void 0, function () {
+        var numPredict, r, text, data;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    numPredict = thinking === 'HIGH' ? 2048 : 512;
+                    return [4 /*yield*/, fetch("".concat(OLLAMA_HOST, "/api/chat"), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                model: model,
+                                messages: [
+                                    { role: 'system', content: SYSTEM_INSTRUCTION },
+                                    { role: 'user', content: input }
+                                ],
+                                stream: false,
+                                options: { num_predict: numPredict }
+                            })
+                        })];
+                case 1:
+                    r = _b.sent();
+                    if (!!r.ok) return [3 /*break*/, 3];
+                    return [4 /*yield*/, r.text()];
+                case 2:
+                    text = _b.sent();
+                    throw new Error("Ollama respondeu ".concat(r.status, ": ").concat(text));
+                case 3: return [4 /*yield*/, r.json()];
+                case 4:
+                    data = _b.sent();
+                    return [2 /*return*/, ((_a = data === null || data === void 0 ? void 0 : data.message) === null || _a === void 0 ? void 0 : _a.content) || 'Sem resposta do modelo.'];
+            }
+        });
+    });
+}
 export var handleChat = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, input, _b, model, _c, thinking, numPredict, ollamaResponse, err_1, text, data, error_1;
-    var _d;
-    return __generator(this, function (_e) {
-        switch (_e.label) {
+    var _a, input, model, _b, thinking, text, err_1, text, err_2, error_1;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
             case 0:
-                _e.trys.push([0, 8, , 9]);
-                _a = req.body, input = _a.input, _b = _a.model, model = _b === void 0 ? OLLAMA_MODEL : _b, _c = _a.thinking, thinking = _c === void 0 ? 'HIGH' : _c;
+                _c.trys.push([0, 8, , 9]);
+                _a = req.body, input = _a.input, model = _a.model, _b = _a.thinking, thinking = _b === void 0 ? 'HIGH' : _b;
                 if (!input) {
                     return [2 /*return*/, res.status(400).json({ error: 'Input form is required' })];
                 }
-                numPredict = thinking === 'HIGH' ? 2048 : 512;
-                ollamaResponse = void 0;
-                _e.label = 1;
+                if (!gemini) return [3 /*break*/, 4];
+                _c.label = 1;
             case 1:
-                _e.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, fetch("".concat(OLLAMA_HOST, "/api/chat"), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            model: model,
-                            messages: [
-                                { role: 'system', content: SYSTEM_INSTRUCTION },
-                                { role: 'user', content: input }
-                            ],
-                            stream: false,
-                            options: { num_predict: numPredict }
-                        })
-                    })];
+                _c.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, chatViaGemini(input, thinking, model || GEMINI_MODEL)];
             case 2:
-                ollamaResponse = _e.sent();
-                return [3 /*break*/, 4];
+                text = _c.sent();
+                return [2 /*return*/, res.json({ text: text, provider: 'gemini' })];
             case 3:
-                err_1 = _e.sent();
-                return [2 /*return*/, res.status(503).json({
-                        error: "Ollama n\u00E3o acess\u00EDvel em ".concat(OLLAMA_HOST, ". Inicie com 'ollama serve' e baixe o modelo: 'ollama pull ").concat(model, "'. Detalhe: ").concat(err_1.message)
-                    })];
+                err_1 = _c.sent();
+                console.error('[Gemini falhou, tentando Ollama como fallback]', err_1.message);
+                return [3 /*break*/, 4];
             case 4:
-                if (!!ollamaResponse.ok) return [3 /*break*/, 6];
-                return [4 /*yield*/, ollamaResponse.text()];
+                _c.trys.push([4, 6, , 7]);
+                return [4 /*yield*/, chatViaOllama(input, thinking, model || OLLAMA_MODEL)];
             case 5:
-                text = _e.sent();
-                return [2 /*return*/, res.status(ollamaResponse.status).json({
-                        error: "Ollama respondeu ".concat(ollamaResponse.status, ": ").concat(text)
+                text = _c.sent();
+                return [2 /*return*/, res.json({ text: text, provider: 'ollama' })];
+            case 6:
+                err_2 = _c.sent();
+                return [2 /*return*/, res.status(503).json({
+                        error: "Nenhum provedor de LLM dispon\u00EDvel. ".concat(gemini ? 'Gemini falhou e ' : 'GEMINI_API_KEY não configurada. ', "Ollama n\u00E3o acess\u00EDvel em ").concat(OLLAMA_HOST, " (").concat(err_2.message, "). Configure GEMINI_API_KEY no .env.local ou rode 'ollama serve' + 'ollama pull ").concat(OLLAMA_MODEL, "'.")
                     })];
-            case 6: return [4 /*yield*/, ollamaResponse.json()];
-            case 7:
-                data = _e.sent();
-                return [2 /*return*/, res.json({ text: ((_d = data === null || data === void 0 ? void 0 : data.message) === null || _d === void 0 ? void 0 : _d.content) || 'Sem resposta do modelo.' })];
+            case 7: return [3 /*break*/, 9];
             case 8:
-                error_1 = _e.sent();
+                error_1 = _c.sent();
                 console.error('Error generic chat handler:', error_1);
                 return [2 /*return*/, res.status(500).json({ error: error_1.message || 'Internal Server Error' })];
             case 9: return [2 /*return*/];
