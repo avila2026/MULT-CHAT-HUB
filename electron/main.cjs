@@ -1,9 +1,50 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 
 let backendProcess;
 let mainWindow;
+
+function getServerPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'app.asar.unpacked', 'server-dist', 'index.js');
+  }
+  return path.join(__dirname, '..', 'server-dist', 'index.js');
+}
+
+function startBackend() {
+  const serverPath = getServerPath();
+
+  if (!fs.existsSync(serverPath)) {
+    console.error(`[Electron] server-dist nao encontrado em ${serverPath}. Rode 'npm run build:server' antes de empacotar.`);
+    return;
+  }
+
+  const logDir = path.join(app.getPath('userData'), 'logs');
+  fs.mkdirSync(logDir, { recursive: true });
+  const logStream = fs.createWriteStream(path.join(logDir, 'backend.log'), { flags: 'a' });
+
+  backendProcess = spawn(process.execPath, [serverPath], {
+    cwd: path.dirname(serverPath),
+    env: { ...process.env, PORT: '3000', ELECTRON_RUN_AS_NODE: '1' }
+  });
+
+  backendProcess.stdout.on('data', (data) => {
+    const text = data.toString();
+    console.log(`[Express]: ${text}`);
+    logStream.write(`[stdout ${new Date().toISOString()}] ${text}`);
+  });
+  backendProcess.stderr.on('data', (data) => {
+    const text = data.toString();
+    console.error(`[Express Error]: ${text}`);
+    logStream.write(`[stderr ${new Date().toISOString()}] ${text}`);
+  });
+  backendProcess.on('exit', (code) => {
+    logStream.write(`[exit ${new Date().toISOString()}] code=${code}\n`);
+    logStream.end();
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -13,18 +54,17 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    autoHideMenuBar: true
+    autoHideMenuBar: true,
+    icon: app.isPackaged ? undefined : path.join(__dirname, '..', 'build', 'icon.ico')
   });
 
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
-    // In dev mode, Vite handles the frontend on 3001
     mainWindow.loadURL('http://localhost:3001');
     mainWindow.webContents.openDevTools();
   } else {
-    // In prod mode, Electron serves the React build directly
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 }
 
@@ -32,16 +72,7 @@ app.whenReady().then(() => {
   const isDev = process.env.NODE_ENV === 'development';
 
   if (!isDev) {
-    // Start Express backend in production using compiled JS
-    const serverPath = path.join(__dirname, '../server-dist/index.js');
-    
-    backendProcess = spawn('node', [serverPath], { 
-      cwd: path.join(__dirname, '..'),
-      env: { ...process.env, PORT: '3000' }
-    });
-
-    backendProcess.stdout.on('data', (data) => console.log(`[Express]: ${data.toString()}`));
-    backendProcess.stderr.on('data', (data) => console.error(`[Express Error]: ${data.toString()}`));
+    startBackend();
   }
 
   createWindow();
@@ -57,7 +88,7 @@ app.on('window-all-closed', () => {
 
 app.on('quit', () => {
   if (backendProcess) {
-    console.log("Encerrando Express Server...");
+    console.log('Encerrando Express Server...');
     backendProcess.kill();
   }
 });
