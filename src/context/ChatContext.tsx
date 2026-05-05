@@ -1,5 +1,5 @@
-import React, { createContext, useState, ReactNode } from 'react';
-import { Agent, Tool, Message, Channel, Task } from '../types';
+import React, { createContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { Agent, Message, Channel, Task, AnalysisResult } from '../types';
 
 interface ChatContextType {
   messages: Message[];
@@ -7,14 +7,14 @@ interface ChatContextType {
   currentChannel: string;
   agents: Agent[];
   tasks: Task[];
-  dataCache: any;
+  dataCache: Record<string, any>;
   reports: string[];
   notifications: {id: number, text: string}[];
   activeAgentIndex: number | null;
   externalAgentURL: string;
   pairingCode: string;
   thinkingLevel: 'LOW' | 'HIGH';
-  
+
   setCurrentChannel: (ch: string) => void;
   addChannel: (ch: Channel) => void;
   addMessage: (msg: Message) => void;
@@ -27,89 +27,220 @@ interface ChatContextType {
   setPairingCode: (code: string) => void;
   connectExternalAgent: () => Promise<void>;
   transcribeAudio: (callback: (text: string) => void) => void;
+  uploadDataset: (file: File) => Promise<void>;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-export const ChatProvider = ({ children }: { children: ReactNode }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, channel: 'Geral', sender: 'Sistema', text: 'Bem-vindo ao Hub de Colaboração Multi-IA. Por favor, apresente-se ou proponha uma tarefa.' }
-  ]);
-  const [channels, setChannels] = useState<Channel[]>([{name: 'Geral', members: [], isPrivate: false}]);
-  const [currentChannel, setCurrentChannel] = useState('Geral');
-  
-  const [agents, setAgents] = useState<Agent[]>([
-    {
-      name: 'Orquestrador Hub',
-      specialty: 'Coordenação e Gemini 3.1',
-      description: 'IA central do sistema para tarefas gerais e orquestração.',
-      permissions: ['admin', 'tools'],
-      provider: 'Interno',
-      status: 'Ativo',
-      thinkingLevel: 'HIGH',
-      tools: []
-    },
-    {
-      name: 'NullClaw Gateway',
-      specialty: 'Automação Local',
-      description: 'Conecte seu motor NullClaw rodando localmente.',
-      permissions: ['full_access'],
-      provider: 'NullClaw Gateway',
-      status: 'Offline',
-      thinkingLevel: 'HIGH',
-      tools: []
+const STORAGE_KEY = 'mch:state:v1';
+const MAX_PERSIST_MESSAGES = 100;
+
+const DEFAULT_MESSAGES: Message[] = [
+  { id: 1, channel: 'Geral', sender: 'Sistema', text: 'Bem-vindo ao Hub de Colaboração Multi-IA. Por favor, apresente-se ou proponha uma tarefa.' }
+];
+const DEFAULT_CHANNELS: Channel[] = [{ name: 'Geral', members: [], isPrivate: false }];
+
+const DEFAULT_AGENTS: Agent[] = [
+  {
+    name: 'Orquestrador Hub',
+    specialty: 'Coordenação Ollama Local',
+    description: 'IA central do sistema para tarefas gerais e orquestração via modelo local fazendaavila2026/avila.',
+    permissions: ['admin', 'tools'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'HIGH',
+    tools: []
+  },
+  {
+    name: 'NullClaw Gateway',
+    specialty: 'Automação Local',
+    description: 'Conecte seu motor NullClaw rodando localmente.',
+    permissions: ['full_access'],
+    provider: 'NullClaw Gateway',
+    status: 'Offline',
+    thinkingLevel: 'HIGH',
+    tools: []
+  }
+];
+
+interface PersistedState {
+  messages: Message[];
+  channels: Channel[];
+  tasks: Task[];
+  dataCache: Record<string, any>;
+  reports: string[];
+}
+
+function loadPersisted(): Partial<PersistedState> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Partial<PersistedState>;
+  } catch {
+    return {};
+  }
+}
+
+function persistState(state: PersistedState): void {
+  try {
+    let toSave = state;
+    let serialized = JSON.stringify(toSave);
+    if (serialized.length > 4_000_000 && state.messages.length > MAX_PERSIST_MESSAGES) {
+      toSave = { ...state, messages: state.messages.slice(-MAX_PERSIST_MESSAGES) };
+      serialized = JSON.stringify(toSave);
     }
-  ]);
-  
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [dataCache, setDataCache] = useState<any>({});
-  const [reports, setReports] = useState<string[]>([]);
-  const [notifications, setNotifications] = useState<{id: number, text: string}[]>([]);
+    localStorage.setItem(STORAGE_KEY, serialized);
+  } catch {
+    // localStorage cheio ou indisponível: ignorar silenciosamente
+  }
+}
+
+// Parser CSV simples (sem aspas dentro de aspas, mas suporta aspas em campos).
+function parseCsv(text: string): Record<string, number[]> {
+  const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim().length > 0);
+  if (lines.length < 2) throw new Error('CSV vazio ou apenas com cabeçalho.');
+  const headers = splitCsvLine(lines[0]);
+  const cols: Record<string, number[]> = {};
+  headers.forEach((h) => { cols[h] = []; });
+  for (let i = 1; i < lines.length; i++) {
+    const values = splitCsvLine(lines[i]);
+    headers.forEach((h, idx) => {
+      const raw = values[idx] ?? '';
+      const num = Number(raw);
+      cols[h].push(Number.isFinite(num) && raw !== '' ? num : NaN);
+    });
+  }
+  // Filtra colunas que têm pelo menos 1 valor numérico
+  const out: Record<string, number[]> = {};
+  for (const [k, arr] of Object.entries(cols)) {
+    if (arr.some((v) => Number.isFinite(v))) out[k] = arr;
+  }
+  if (Object.keys(out).length === 0) throw new Error('CSV sem colunas numéricas.');
+  return out;
+}
+
+function splitCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; continue; }
+    if (ch === ',' && !inQuotes) { out.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+// Encontra o JSON balanceado a partir do índice — retorna {json, end} ou null
+function extractBalancedJson(text: string, start: number): { json: string; end: number } | null {
+  if (text[start] !== '{') return null;
+  let depth = 0;
+  let inStr = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return { json: text.slice(start, i + 1), end: i + 1 };
+    }
+  }
+  return null;
+}
+
+export const ChatProvider = ({ children }: { children: ReactNode }) => {
+  const persisted = loadPersisted();
+
+  const [messages, setMessages] = useState<Message[]>(persisted.messages?.length ? persisted.messages : DEFAULT_MESSAGES);
+  const [channels, setChannels] = useState<Channel[]>(persisted.channels?.length ? persisted.channels : DEFAULT_CHANNELS);
+  const [currentChannel, setCurrentChannel] = useState('Geral');
+  const [agents, setAgents] = useState<Agent[]>(DEFAULT_AGENTS);
+  const [tasks, setTasks] = useState<Task[]>(persisted.tasks ?? []);
+  const [dataCache, setDataCache] = useState<Record<string, any>>(persisted.dataCache ?? {});
+  const [reports, setReports] = useState<string[]>(persisted.reports ?? []);
+  const [notifications] = useState<{ id: number; text: string }[]>([]);
   const [activeAgentIndex, setActiveAgentIndex] = useState<number | null>(0);
   const [externalAgentURL, setExternalAgentURL] = useState('http://127.0.0.1:3000');
   const [pairingCode, setPairingCode] = useState('');
   const [thinkingLevel, setThinkingLevel] = useState<'LOW' | 'HIGH'>('HIGH');
 
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  useEffect(() => {
+    persistState({ messages, channels, tasks, dataCache, reports });
+  }, [messages, channels, tasks, dataCache, reports]);
+
+  const addMessage = (msg: Message) => {
+    setMessages((prev) => [...prev, msg]);
+  };
+
   const processCommands = async (responseText: string) => {
-    // Parser simples para comandos textuais
-    let processedResult = responseText;
-    
-    // Tools /use_tool [nome] {"json"}
-    const toolMatch = responseText.match(/\/use_tool\s+([a-zA-Z_0-9]+)\s+({[^}]+})/);
-    if (toolMatch) {
-      try {
-        const [_, toolName, argsStr] = toolMatch;
-        const args = JSON.parse(argsStr);
-        const res = await fetch('/api/tools/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ toolName, args })
-        });
-        const data = await res.json();
-        
-        let toolOutput = data.result || JSON.stringify(data);
-        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Resultado da Ferramenta ${toolName}: ${toolOutput}` });
-      } catch (err: any) {
-         addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de ferramenta: ${err.message}` });
+    // /use_tool [nome] {json balanceado}
+    const useToolStart = responseText.match(/\/use_tool\s+([a-zA-Z_0-9]+)\s+/);
+    if (useToolStart && useToolStart.index !== undefined) {
+      const toolName = useToolStart[1];
+      const jsonStart = useToolStart.index + useToolStart[0].length;
+      const extracted = extractBalancedJson(responseText, jsonStart);
+      if (extracted) {
+        try {
+          const args = JSON.parse(extracted.json);
+          const res = await fetch('/api/tools/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ toolName, args })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de ferramenta ${toolName}: ${data.error || res.status}` });
+          } else if (data.analysis) {
+            const analysis = data.analysis as AnalysisResult;
+            addMessage({
+              id: Date.now(),
+              channel: currentChannel,
+              sender: 'Sistema',
+              text: `Resultado de ${toolName}: análise ${analysis.analysis_type} sobre ${analysis.input_rows} linhas e ${analysis.input_columns.length} colunas.`,
+              analysis
+            });
+          } else {
+            const toolOutput = data.result || JSON.stringify(data);
+            addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Resultado da Ferramenta ${toolName}: ${toolOutput}` });
+          }
+        } catch (err: any) {
+          addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de ferramenta: ${err.message}` });
+        }
       }
     }
 
     if (responseText.includes('/criar_tarefa')) {
       const match = responseText.match(/\/criar_tarefa\s+"([^"]+)"\s+"([^"]+)"\s+"([^"]+)"/);
       if (match) {
-        setTasks(prev => [...prev, { id: prev.length + 1, title: match[1], description: match[2], deadline: match[3], status: 'pendente' }]);
+        setTasks((prev) => [...prev, { id: prev.length + 1, title: match[1], description: match[2], deadline: match[3], status: 'pendente' }]);
         addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Tarefa criada: ${match[1]}` });
       }
     }
 
     if (responseText.includes('/analisar_dados')) {
-      const match = responseText.match(/\/analisar_dados\s+({[^}]+})\s+"([^"]+)"/);
-      if (match) {
-        try {
-          const type = match[2];
-          setDataCache((prev: any) => ({...prev, [type]: JSON.parse(match[1])}));
-          addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Dados analisados cache: [${type}]` });
-        } catch {}
+      const match = responseText.match(/\/analisar_dados\s+/);
+      if (match && match.index !== undefined) {
+        const start = match.index + match[0].length;
+        const extracted = extractBalancedJson(responseText, start);
+        if (extracted) {
+          const after = responseText.slice(extracted.end).match(/\s+"([^"]+)"/);
+          if (after) {
+            try {
+              const type = after[1];
+              setDataCache((prev) => ({ ...prev, [type]: JSON.parse(extracted.json) }));
+              addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Dados analisados cache: [${type}]` });
+            } catch {}
+          }
+        }
       }
     }
 
@@ -117,7 +248,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const match = responseText.match(/\/concluir_tarefa\s+"?(\d+)"?/);
       if (match) {
         const taskId = parseInt(match[1], 10);
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'concluído' } : t));
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: 'concluído' } : t)));
         addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Tarefa ${taskId} marcada como concluída.` });
       }
     }
@@ -126,23 +257,31 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const match = responseText.match(/\/remover_tarefa\s+"?(\d+)"?/);
       if (match) {
         const taskId = parseInt(match[1], 10);
-        setTasks(prev => prev.filter(t => t.id !== taskId));
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
         addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Tarefa ${taskId} removida.` });
       }
     }
 
     if (responseText.includes('/limpar_dados')) {
-       setDataCache({});
-       addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Todos os dados em cache de análise visual foram limpos.` });
+      setDataCache({});
+      addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Todos os dados em cache de análise foram limpos.' });
+    }
+
+    if (responseText.includes('/gerar_relatorio')) {
+      const match = responseText.match(/\/gerar_relatorio\s+"([^"]+)"\s+"([^"]+)"/);
+      if (match) {
+        const [, content, format] = match;
+        const stamp = new Date().toLocaleString('pt-BR');
+        const header = `# Relatório (${format}) — ${stamp}`;
+        const body = `${header}\n\n${content}\n\nTarefas ativas: ${tasks.length} | Datasets em cache: ${Object.keys(dataCache).length}`;
+        setReports((prev) => [...prev, body]);
+        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Relatório consolidado adicionado (formato ${format}).` });
+      }
     }
   };
 
-  const addMessage = (msg: Message) => {
-    setMessages(prev => [...prev, msg]);
-  };
-
   const sendMessage = async (input: string) => {
-    const channel = channels.find(c => c.name === currentChannel);
+    const channel = channels.find((c) => c.name === currentChannel);
     if (channel?.isPrivate && !channel.members.includes('User')) {
       addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Você não tem permissão neste canal privado.' });
       return;
@@ -150,9 +289,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     if (input.startsWith('/')) {
       if (input === '/clear') {
-         setMessages(prev => prev.filter(m => m.channel !== currentChannel));
+        setMessages((prev) => prev.filter((m) => m.channel !== currentChannel));
+      } else if (input === '/reset') {
+        setMessages(DEFAULT_MESSAGES);
+        setTasks([]);
+        setDataCache({});
+        setReports([]);
+        localStorage.removeItem(STORAGE_KEY);
       } else {
-         addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Os comandos locais são: /clear' });
+        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Comandos locais: /clear, /reset' });
       }
       return;
     }
@@ -161,37 +306,31 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       let responseText = '';
-      let senderName = 'Gemini';
+      let senderName = 'Orquestrador Hub';
 
-      // Se Agente Externo
       if (activeAgentIndex !== null && agents[activeAgentIndex].provider === 'NullClaw Gateway') {
-         senderName = agents[activeAgentIndex].name;
-         const response = await fetch(`${externalAgentURL}/webhook`, {
-           method: 'POST',
-           headers: { 
-             'Content-Type': 'application/json',
-             'Authorization': `Bearer ${pairingCode}`
-           },
-           body: JSON.stringify({ message: input })
-         });
-         if (response.ok) {
-            const data = await response.json();
-            responseText = data.reply || data.response || JSON.stringify(data);
-         } else {
-            responseText = `Erro no Gateway (${response.status}).`;
-         }
+        senderName = agents[activeAgentIndex].name;
+        const response = await fetch(`${externalAgentURL}/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${pairingCode}`
+          },
+          body: JSON.stringify({ message: input })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          responseText = data.reply || data.response || JSON.stringify(data);
+        } else {
+          responseText = `Erro no Gateway (${response.status}).`;
+        }
       } else {
-        // Backend Express Local
         senderName = activeAgentIndex !== null ? agents[activeAgentIndex].name : 'Orquestrador Hub';
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            input: input,
-            thinking: thinkingLevel
-          })
+          body: JSON.stringify({ input, thinking: thinkingLevel })
         });
-        
         if (response.ok) {
           const data = await response.json();
           responseText = data.text;
@@ -202,9 +341,53 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
       addMessage({ id: Date.now() + 1, channel: currentChannel, sender: senderName, text: responseText });
       await processCommands(responseText);
-
     } catch (e) {
       addMessage({ id: Date.now() + 2, channel: currentChannel, sender: 'Sistema', text: 'Falha de comunicação.' });
+    }
+  };
+
+  const uploadDataset = async (file: File) => {
+    try {
+      const text = await file.text();
+      let parsed: Record<string, number[]>;
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith('.json')) {
+        const raw = JSON.parse(text);
+        if (Array.isArray(raw)) {
+          // converte array de objetos para colunar
+          if (raw.length === 0) throw new Error('JSON vazio.');
+          const cols: Record<string, number[]> = {};
+          for (const key of Object.keys(raw[0])) cols[key] = [];
+          for (const row of raw) {
+            for (const key of Object.keys(cols)) {
+              const v = (row as any)[key];
+              const num = Number(v);
+              cols[key].push(Number.isFinite(num) ? num : NaN);
+            }
+          }
+          parsed = cols;
+        } else if (raw && typeof raw === 'object') {
+          parsed = raw as Record<string, number[]>;
+        } else {
+          throw new Error('JSON precisa ser objeto colunar ou array de objetos.');
+        }
+      } else if (lower.endsWith('.csv')) {
+        parsed = parseCsv(text);
+      } else {
+        throw new Error('Formato não suportado. Envie .csv ou .json');
+      }
+
+      setDataCache((prev) => ({ ...prev, [file.name]: parsed }));
+      const cols = Object.keys(parsed);
+      const rows = parsed[cols[0]]?.length ?? 0;
+      addMessage({
+        id: Date.now(),
+        channel: currentChannel,
+        sender: 'Sistema',
+        text: `Dataset "${file.name}" carregado: ${rows} linhas, ${cols.length} colunas (${cols.join(', ')}).\nUse: /use_tool analyze_descriptive {"data": <conteúdo de dataCache["${file.name}"]>}`
+      });
+    } catch (err: any) {
+      addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro ao carregar arquivo: ${err.message}` });
     }
   };
 
@@ -213,23 +396,26 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       try {
         const response = await fetch(`${externalAgentURL}/health`);
         if (response.ok) {
-           setAgents([...agents, {
-             name: 'NullClaw Externo',
-             specialty: 'Agente Conectado',
-             description: `Agente rodando em ${externalAgentURL}`,
-             permissions: ['full_access'],
-             provider: 'NullClaw Gateway',
-             status: 'Online',
-             thinkingLevel: 'HIGH',
-             tools: []
-           }]);
-           addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Conectado com sucesso ao agente em ${externalAgentURL}!` });
-           setPairingCode('');
+          setAgents((prev) => [
+            ...prev,
+            {
+              name: 'NullClaw Externo',
+              specialty: 'Agente Conectado',
+              description: `Agente rodando em ${externalAgentURL}`,
+              permissions: ['full_access'],
+              provider: 'NullClaw Gateway',
+              status: 'Online',
+              thinkingLevel: 'HIGH',
+              tools: []
+            }
+          ]);
+          addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Conectado com sucesso ao agente em ${externalAgentURL}!` });
+          setPairingCode('');
         } else {
-           addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro: Gateway ${externalAgentURL} retornou erro.` });
+          addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro: Gateway ${externalAgentURL} retornou erro.` });
         }
-      } catch (e) {
-        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de conexão: Não alcançável.` });
+      } catch {
+        addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Erro de conexão: Não alcançável.' });
       }
     }
   };
@@ -254,7 +440,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       setCurrentChannel, addChannel: (ch) => setChannels([...channels, ch]), addMessage, sendMessage,
       registerAgent: (ag) => setAgents([...agents, ag]),
       updateAgent: (i, ag) => { const newAg = [...agents]; newAg[i] = ag; setAgents(newAg); },
-      setActiveAgentIndex, setThinkingLevel, setExternalAgentURL, setPairingCode, connectExternalAgent, transcribeAudio
+      setActiveAgentIndex, setThinkingLevel, setExternalAgentURL, setPairingCode, connectExternalAgent, transcribeAudio,
+      uploadDataset
     }}>
       {children}
     </ChatContext.Provider>

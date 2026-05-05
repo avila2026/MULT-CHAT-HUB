@@ -15,11 +15,21 @@ export interface Agent {
   tools: Tool[];
 }
 
+export type AnalysisType = 'descritiva' | 'preditiva' | 'anomalias' | 'otimizacao' | 'software';
+
+export interface AnalysisResult {
+  analysis_type: AnalysisType;
+  input_rows: number;
+  input_columns: string[];
+  analysis_result: Record<string, unknown>;
+}
+
 export interface Message {
   id: number;
   channel: string;
   sender: string;
   text: string;
+  analysis?: AnalysisResult;
 }
 
 export interface Channel {
