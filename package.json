@@ -21,7 +21,8 @@
     "appId": "com.multchathub.app",
     "productName": "MULT CHAT HUB",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
@@ -29,8 +30,12 @@
       "electron/**/*",
       "package.json"
     ],
+    "asarUnpack": [
+      "server-dist/**/*"
+    ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -38,22 +43,24 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   },
   "dependencies": {
-    "@google/genai": "^1.29.0",
     "@octokit/rest": "^22.0.1",
     "@tailwindcss/vite": "^4.1.14",
     "@types/cors": "^2.8.19",
     "@vitejs/plugin-react": "^5.0.4",
-    "better-sqlite3": "^12.4.1",
     "concurrently": "^9.2.1",
     "cors": "^2.8.6",
     "d3": "^7.9.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "javascript-lp-solver": "^0.4.24",
     "lucide-react": "^0.546.0",
+    "ml-regression-multivariate-linear": "^2.0.4",
     "motion": "^12.23.24",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
