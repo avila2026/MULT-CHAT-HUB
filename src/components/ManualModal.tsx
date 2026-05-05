@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, Terminal, Code, Settings } from 'lucide-react';
+import { X, BookOpen, Terminal, Code, Settings, Paperclip } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ManualModalProps {
@@ -117,7 +117,74 @@ export default function ManualModal({ isOpen, onClose }: ManualModalProps) {
 
               <section>
                 <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
-                  <Settings className="w-5 h-5 text-indigo-600" /> 3. Integração com Gateway Externo (NullClaw API)
+                  <Code className="w-5 h-5 text-indigo-600" /> 3. Quantum Analytical Engine (Tools de Análise)
+                </h3>
+                <p className="mb-4">
+                  Cinco análises quantitativas executam localmente em TypeScript puro (sem Python). Aceitam
+                  dados em formato colunar <code className="bg-zinc-100 px-1 rounded">{"{col: number[]}"}</code> ou
+                  por linhas <code className="bg-zinc-100 px-1 rounded">[{"{col: val}"}]</code>. Use o botão
+                  <Paperclip className="inline w-3 h-3 mx-1" /> para carregar CSV/JSON — o dataset é guardado em
+                  <code className="bg-zinc-100 px-1 rounded ml-1">dataCache[nome_arquivo]</code> e referenciado nas chamadas.
+                </p>
+
+                <div className="bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden mt-4 shadow-sm">
+                  <div className="bg-zinc-200/50 p-3 font-mono text-xs border-b border-zinc-200 font-semibold text-zinc-700">
+                     Tools de Análise
+                  </div>
+                  <div className="p-4">
+                     <ul className="text-xs space-y-3 font-mono">
+                       <li>
+                         <span className="text-indigo-600 font-bold">analyze_descriptive</span> {"{ \"data\": <obj|array> }"}
+                         <p className="text-zinc-500 mt-1 font-sans">Estatísticas (count, mean, std, min, p25, p50, p75, max) por coluna numérica.</p>
+                       </li>
+                       <li>
+                         <span className="text-indigo-600 font-bold">analyze_predictive</span> {"{ \"data\": <obj|array>, \"target_column\": \"y\" }"}
+                         <p className="text-zinc-500 mt-1 font-sans">Regressão linear multivariada. <span className="text-red-600">target_column é obrigatória</span> e deve ser numérica.</p>
+                       </li>
+                       <li>
+                         <span className="text-indigo-600 font-bold">detect_anomalies</span> {"{ \"data\": <obj|array> }"}
+                         <p className="text-zinc-500 mt-1 font-sans">Z-score multivariado: linha é anomalia se |z| {">"} 2.5 em qualquer feature.</p>
+                       </li>
+                       <li>
+                         <span className="text-indigo-600 font-bold">optimize_linear</span> {"{}"}
+                         <p className="text-zinc-500 mt-1 font-sans">Programação linear (exemplo padrão: minimizar 2x+3y s.t. x+y≥10, x+2y≥15).</p>
+                       </li>
+                       <li>
+                         <span className="text-indigo-600 font-bold">recommend_stack</span> {"{}"}
+                         <p className="text-zinc-500 mt-1 font-sans">Retorna stack tecnológica recomendada (saída fixa).</p>
+                       </li>
+                     </ul>
+
+                     <div className="mt-4 pt-4 border-t border-zinc-200">
+                       <p className="text-sm font-semibold mb-2">Mapa de intenções (LLM → análise):</p>
+                       <table className="w-full text-xs border-collapse">
+                         <thead>
+                           <tr className="bg-zinc-100">
+                             <th className="text-left p-2 border border-zinc-200">Palavras-chave</th>
+                             <th className="text-left p-2 border border-zinc-200">Tool</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           <tr><td className="p-2 border border-zinc-200">prever, estimar, regressão, vendas futuras</td><td className="p-2 border border-zinc-200 font-mono">analyze_predictive</td></tr>
+                           <tr><td className="p-2 border border-zinc-200">fraude, outlier, atípico, anomalia</td><td className="p-2 border border-zinc-200 font-mono">detect_anomalies</td></tr>
+                           <tr><td className="p-2 border border-zinc-200">resumo, médias, desvio padrão</td><td className="p-2 border border-zinc-200 font-mono">analyze_descriptive</td></tr>
+                           <tr><td className="p-2 border border-zinc-200">minimizar custos, otimizar recursos</td><td className="p-2 border border-zinc-200 font-mono">optimize_linear</td></tr>
+                           <tr><td className="p-2 border border-zinc-200">qual stack, qual banco, que linguagem</td><td className="p-2 border border-zinc-200 font-mono">recommend_stack</td></tr>
+                         </tbody>
+                       </table>
+                     </div>
+
+                     <div className="mt-4 pt-4 border-t border-zinc-200">
+                       <p className="text-sm font-semibold mb-2">Persistência:</p>
+                       <p className="text-xs text-zinc-600">Mensagens, tarefas, datasets carregados e relatórios são salvos em <code className="bg-zinc-100 px-1 rounded">localStorage</code>. Use <code className="bg-zinc-100 px-1 rounded">/reset</code> no input para limpar tudo.</p>
+                     </div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
+                  <Settings className="w-5 h-5 text-indigo-600" /> 4. Integração com Gateway Externo (NullClaw API)
                 </h3>
                 <p className="mb-4">
                   O NullClaw pode receber chamadas de eventos webhook padronizados baseados no `pairing code` de segurança, que autentica localmente chamadas locais ou com o servidor Zig.
