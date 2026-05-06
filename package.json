@@ -7,15 +7,17 @@
   "scripts": {
     "dev": "vite --port=3001 --host=0.0.0.0",
     "build:frontend": "vite build",
+    "build:frontend:electron": "vite build --mode electron",
     "build:server": "tsc server/index.ts --outDir server-dist --module ESNext --moduleResolution node --esModuleInterop --skipLibCheck",
     "build": "npm run build:frontend && npm run build:server",
+    "build:electron": "npm run build:frontend:electron && npm run build:server",
     "preview": "vite preview",
     "clean": "rm -rf dist server-dist",
     "lint": "tsc --noEmit",
     "server": "tsx server/index.ts",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
     "electron:dev": "cross-env NODE_ENV=development concurrently \"npm run dev:all\" \"wait-on tcp:3000 tcp:3001 && electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build:electron && electron-builder"
   },
   "build": {
     "appId": "com.multchathub.app",
