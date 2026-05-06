@@ -19,7 +19,7 @@ export default function App() {
       <div className="h-screen w-full bg-zinc-50 flex flex-col font-sans overflow-hidden text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900">
         <header className="flex-none bg-white border-b border-zinc-200 p-4 flex items-center justify-between z-10 shadow-sm relative">
           <h1 className="text-xl font-bold flex items-center gap-3 tracking-tight text-zinc-800">
-            <img src="/logo.svg" alt="" aria-hidden="true" className="w-9 h-9 shrink-0" />
+            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" aria-hidden="true" className="w-9 h-9 shrink-0" />
             <span>
               <span className="text-indigo-900">MULT-</span>
               <span className="text-emerald-500">CHAT</span>
