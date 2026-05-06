@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   // base relativa './' apenas no build do Electron (carrega via file://);
   // em web (Vercel/dev) usa '/' absoluto para evitar que sub-rotas
   // (e o SPA rewrite do vercel.json) quebrem o resolvimento de assets.
-  const base = mode === 'electron' ? './' : '/';
+  const base = mode.startsWith('electron') ? './' : '/';
   return {
     base,
     plugins: [react(), tailwindcss()],

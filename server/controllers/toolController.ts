@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Octokit } from '@octokit/rest';
-import { executeAnalysis, AnalysisType } from '../lib/analyticalEngine.js';
+import { executeAnalysis, AnalysisType } from '../../src/lib/analyticalEngine.js';
 
 // O Octokit lerá o token do seu .env
 const octokit = new Octokit({ auth: process.env.VITE_GITHUB_TOKEN || '' });

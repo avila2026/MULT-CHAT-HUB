@@ -1,5 +1,14 @@
 import React, { createContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Agent, Message, Channel, Task, AnalysisResult } from '../types';
+import { executeAnalysis, AnalysisType } from '../lib/analyticalEngine';
+
+const CLIENT_ANALYSIS_TOOLS: Record<string, AnalysisType> = {
+  analyze_descriptive: 'descritiva',
+  analyze_predictive: 'preditiva',
+  detect_anomalies: 'anomalias',
+  optimize_linear: 'otimizacao',
+  recommend_stack: 'software'
+};
 
 interface ChatContextType {
   messages: Message[];
@@ -191,26 +200,50 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       if (extracted) {
         try {
           const args = JSON.parse(extracted.json);
-          const res = await fetch('/api/tools/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ toolName, args })
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de ferramenta ${toolName}: ${data.error || res.status}` });
-          } else if (data.analysis) {
-            const analysis = data.analysis as AnalysisResult;
-            addMessage({
-              id: Date.now(),
-              channel: currentChannel,
-              sender: 'Sistema',
-              text: `Resultado de ${toolName}: análise ${analysis.analysis_type} sobre ${analysis.input_rows} linhas e ${analysis.input_columns.length} colunas.`,
-              analysis
+
+          // Tools de analise quantitativa rodam client-side (TypeScript puro,
+          // sem dependencia de backend). Permite que o app funcione completo
+          // no deploy Vercel mesmo sem Express + Ollama disponiveis.
+          if (toolName in CLIENT_ANALYSIS_TOOLS) {
+            try {
+              const analysis = executeAnalysis({
+                data: args.data,
+                analysisType: CLIENT_ANALYSIS_TOOLS[toolName],
+                targetColumn: args.target_column
+              });
+              addMessage({
+                id: Date.now(),
+                channel: currentChannel,
+                sender: 'Sistema',
+                text: `Resultado de ${toolName}: análise ${analysis.analysis_type} sobre ${analysis.input_rows} linhas e ${analysis.input_columns.length} colunas.`,
+                analysis
+              });
+            } catch (err: any) {
+              addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro na análise ${toolName}: ${err.message}` });
+            }
+            return;
+          }
+
+          // Demais tools (github, calculate_math, store/retrieve_memory,
+          // get_current_time) dependem do backend Express.
+          try {
+            const res = await fetch('/api/tools/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ toolName, args })
             });
-          } else {
-            const toolOutput = data.result || JSON.stringify(data);
-            addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Resultado da Ferramenta ${toolName}: ${toolOutput}` });
+            const data = await res.json();
+            if (!res.ok) {
+              addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de ferramenta ${toolName}: ${data.error || res.status}` });
+            } else {
+              const toolOutput = data.result || JSON.stringify(data);
+              addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Resultado da Ferramenta ${toolName}: ${toolOutput}` });
+            }
+          } catch {
+            addMessage({
+              id: Date.now(), channel: currentChannel, sender: 'Sistema',
+              text: `Ferramenta "${toolName}" exige o backend Express local. No deploy Vercel apenas as 5 tools de análise (analyze_descriptive, analyze_predictive, detect_anomalies, optimize_linear, recommend_stack) estão disponíveis. Rode "npm run dev:all" localmente para acesso completo.`
+            });
           }
         } catch (err: any) {
           addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: `Erro de ferramenta: ${err.message}` });

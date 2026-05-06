@@ -57,15 +57,30 @@ Instalador gerado em `release/MULT CHAT HUB Setup <versão>.exe`. Ícone, asarUn
 
 Alternativamente, dispare o workflow [`release.yml`](.github/workflows/release.yml) via push de tag `v*` ou `workflow_dispatch` para builds automatizados em `windows-latest`.
 
-## Deploy no Vercel (preview do frontend)
+## Deploy no Vercel (modo demo: análises + UI completa)
 
-O frontend é um SPA estático (Vite/React). Pode ser publicado no Vercel para preview:
+O frontend é um SPA Vite/React publicável no Vercel:
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/avila2026/MULT-CHAT-HUB)
 
-Configuração já incluída em [`vercel.json`](./vercel.json) — Vercel detecta o build via `npm run build:frontend` e serve `dist/`.
+Config em [`vercel.json`](./vercel.json) — `buildCommand: npm run build:frontend`, `outputDirectory: dist`. Vercel detecta automaticamente.
 
-> ⚠️ **Limitações do deploy Vercel**: o backend Express e as chamadas para Ollama (`localhost:11434`) **não rodam** em ambiente serverless público. As 5 tools de análise, o chat, e os endpoints `/api/*` exigem o backend Express + Ollama na mesma máquina. Use o deploy Vercel apenas para demonstrar a UI estática, ou aponte `/api/*` para um backend hospedado separadamente (ex: Fly.io, Railway, VPS) editando o proxy em `vite.config.ts` e a URL base em `ChatContext.tsx`.
+**O que funciona no Vercel** (sem backend, 100% client-side):
+
+| Recurso | Status no Vercel |
+|---|---|
+| UI completa, navegação, persistência localStorage | ✅ |
+| Upload de CSV/JSON + preview | ✅ |
+| `analyze_descriptive`, `analyze_predictive`, `detect_anomalies`, `optimize_linear`, `recommend_stack` | ✅ (engine TypeScript puro roda no browser) |
+| Gráficos `recharts` inline | ✅ |
+| Comandos slash (`/criar_tarefa`, `/concluir_tarefa`, `/limpar_dados`, `/gerar_relatorio`) | ✅ |
+| Chat com Ollama (`/api/chat`) | ❌ Requer Ollama local — modo desktop |
+| Tools `github_*`, `calculate_math`, `store/retrieve_memory`, `get_current_time` | ❌ Backend Express |
+| Gateway NullClaw externo | ❌ |
+
+Quando uma tool exige backend, o app exibe mensagem clara orientando a rodar `npm run dev:all` localmente.
+
+Para chat completo no Vercel: hospede o backend Express separadamente (Fly.io, Railway, VPS com Ollama) e edite o proxy `/api` em `vite.config.ts`.
 
 ## Variáveis de ambiente
 
