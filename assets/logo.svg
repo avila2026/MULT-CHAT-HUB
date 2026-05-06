@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="MULT-CHAT-HUB">
+  <title>MULT-CHAT-HUB</title>
+
+  <defs>
+    <!-- Esmeralda gradient para nos verdes -->
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <!-- Indigo gradient para hexagono central e nos azuis -->
+    <linearGradient id="indigoGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="indigoNodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3730a3"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Aneis pontilhados ao redor do hub. cx=512 cy=420 -->
+  <g fill="none" stroke-width="6">
+    <circle cx="512" cy="420" r="290" stroke="#10b981" stroke-opacity="0.55" stroke-dasharray="14 18"/>
+    <circle cx="512" cy="420" r="240" stroke="#312e81" stroke-opacity="0.35" stroke-dasharray="6 14"/>
+  </g>
+
+  <!-- Linhas de conexao do hexagono aos 5 nos.
+       Nos posicionados em angulos: topo=270, NE=342, SE=54, SW=126, NW=198 (graus, sentido horario)
+       Aqui usamos coordenadas calculadas: r=240 a partir de (512,420).
+       topo:    (512, 180)
+       NE:      (740, 350)
+       SE:      (660, 620)
+       SW:      (364, 620)
+       NW:      (284, 350)
+  -->
+  <g stroke="#312e81" stroke-width="9" stroke-linecap="round" fill="none">
+    <line x1="512" y1="420" x2="512" y2="180"/>
+    <line x1="512" y1="420" x2="740" y2="350"/>
+    <line x1="512" y1="420" x2="660" y2="620"/>
+    <line x1="512" y1="420" x2="364" y2="620"/>
+    <line x1="512" y1="420" x2="284" y2="350"/>
+  </g>
+
+  <!-- Hexagono central -->
+  <g>
+    <!-- 6 vertices de hexagono regular com flat-top vertical (apex em cima e baixo).
+         Para um polygon vertical com apex (flat-top variant), uso pointy-top:
+         angulos: 90,150,210,270,330,30 -->
+    <polygon
+      points="512,260 686,360 686,480 512,580 338,480 338,360"
+      fill="url(#indigoGrad)"
+      stroke="#0f172a"
+      stroke-width="4"/>
+    <text x="512" y="448"
+          font-family="Inter, Helvetica, Arial, sans-serif"
+          font-size="138" font-weight="800"
+          text-anchor="middle"
+          fill="#ffffff"
+          letter-spacing="2">MCH</text>
+  </g>
+
+  <!-- Nos (5 circulos com icones brancos) -->
+  <!-- Topo: chat bubble (indigo) -->
+  <g>
+    <circle cx="512" cy="180" r="62" fill="url(#indigoNodeGrad)"/>
+    <path d="M 478 158 H 546 a 14 14 0 0 1 14 14 v 24 a 14 14 0 0 1 -14 14 h -38 l -22 18 v -18 H 478 a 14 14 0 0 1 -14 -14 v -24 a 14 14 0 0 1 14 -14 z"
+          fill="#ffffff"/>
+    <circle cx="495" cy="184" r="4" fill="#1e1b4b"/>
+    <circle cx="512" cy="184" r="4" fill="#1e1b4b"/>
+    <circle cx="529" cy="184" r="4" fill="#1e1b4b"/>
+  </g>
+
+  <!-- NE: code </> (esmeralda) -->
+  <g>
+    <circle cx="740" cy="350" r="62" fill="url(#emeraldGrad)"/>
+    <g stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="722,330 702,350 722,370"/>
+      <polyline points="758,330 778,350 758,370"/>
+      <line x1="745" y1="324" x2="735" y2="376"/>
+    </g>
+  </g>
+
+  <!-- NW: bar chart (esmeralda) -->
+  <g>
+    <circle cx="284" cy="350" r="62" fill="url(#emeraldGrad)"/>
+    <g fill="#ffffff">
+      <rect x="262" y="338" width="14" height="36" rx="2"/>
+      <rect x="284" y="320" width="14" height="54" rx="2"/>
+      <rect x="306" y="346" width="14" height="28" rx="2"/>
+    </g>
+  </g>
+
+  <!-- SE: line chart (indigo) -->
+  <g>
+    <circle cx="660" cy="620" r="62" fill="url(#indigoNodeGrad)"/>
+    <polyline points="630,640 648,612 668,628 690,596"
+              fill="none" stroke="#ffffff" stroke-width="7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="690" cy="596" r="5" fill="#10b981"/>
+    <circle cx="668" cy="628" r="4" fill="#ffffff"/>
+    <circle cx="648" cy="612" r="4" fill="#ffffff"/>
+    <circle cx="630" cy="640" r="4" fill="#ffffff"/>
+  </g>
+
+  <!-- SW: terminal >_ (indigo) -->
+  <g>
+    <circle cx="364" cy="620" r="62" fill="url(#indigoNodeGrad)"/>
+    <g stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="338,602 354,620 338,638"/>
+      <line x1="364" y1="640" x2="392" y2="640"/>
+    </g>
+  </g>
+
+  <!-- Wordmark "MULT-CHAT-HUB" com tracos laterais -->
+  <g font-family="Inter, Helvetica, Arial, sans-serif" font-weight="800" font-size="86" letter-spacing="6" text-anchor="middle">
+    <line x1="158" y1="838" x2="240" y2="838" stroke="#312e81" stroke-width="9" stroke-linecap="round"/>
+    <line x1="784" y1="838" x2="866" y2="838" stroke="#312e81" stroke-width="9" stroke-linecap="round"/>
+    <text x="324" y="862" fill="#312e81">MULT-</text>
+    <text x="512" y="862" fill="#10b981">CHAT</text>
+    <text x="700" y="862" fill="#312e81">-HUB</text>
+  </g>
+</svg>
