@@ -22,6 +22,18 @@ export default function Sidebar() {
 
   return (
     <aside className="bg-white border-r border-zinc-200 p-4 space-y-6 flex flex-col w-[300px] overflow-y-auto">
+      <div className="flex items-center gap-3 pb-4 border-b border-zinc-200">
+        <img src="/logo.svg" alt="MULT-CHAT-HUB" className="w-12 h-12 shrink-0" />
+        <div className="leading-tight">
+          <p className="font-bold text-zinc-900 text-sm tracking-wide">
+            <span className="text-indigo-900">MULT-</span>
+            <span className="text-emerald-600">CHAT</span>
+            <span className="text-indigo-900">-HUB</span>
+          </p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Multi-AI Hub</p>
+        </div>
+      </div>
+
       <div>
         <h2 className="font-semibold mb-4 text-zinc-800">Canais</h2>
         <div className="space-y-1">

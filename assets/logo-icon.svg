@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="MCH icon">
+  <title>MCH</title>
+
+  <defs>
+    <linearGradient id="emeraldGradI" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="indigoGradI" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="indigoNodeGradI" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3730a3"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Centro reposicionado em (512,512) para versao quadrada -->
+  <g fill="none" stroke-width="8">
+    <circle cx="512" cy="512" r="380" stroke="#10b981" stroke-opacity="0.55" stroke-dasharray="18 22"/>
+    <circle cx="512" cy="512" r="320" stroke="#312e81" stroke-opacity="0.35" stroke-dasharray="8 18"/>
+  </g>
+
+  <!-- Linhas do hexagono ao 5 nos (raio 320) -->
+  <!-- Angulos: -90 (topo), -18 (NE), 54 (SE), 126 (SW), -162 (NW) -->
+  <!-- topo:  (512, 192) -->
+  <!-- NE:    (816, 413) -->
+  <!-- SE:    (700, 771) -->
+  <!-- SW:    (324, 771) -->
+  <!-- NW:    (208, 413) -->
+  <g stroke="#312e81" stroke-width="12" stroke-linecap="round" fill="none">
+    <line x1="512" y1="512" x2="512" y2="192"/>
+    <line x1="512" y1="512" x2="816" y2="413"/>
+    <line x1="512" y1="512" x2="700" y2="771"/>
+    <line x1="512" y1="512" x2="324" y2="771"/>
+    <line x1="512" y1="512" x2="208" y2="413"/>
+  </g>
+
+  <!-- Hexagono central (pointy-top, escala maior) -->
+  <polygon
+    points="512,348 744,448 744,576 512,676 280,576 280,448"
+    fill="url(#indigoGradI)"
+    stroke="#0f172a"
+    stroke-width="6"/>
+  <text x="512" y="546"
+        font-family="Inter, Helvetica, Arial, sans-serif"
+        font-size="170" font-weight="800"
+        text-anchor="middle"
+        fill="#ffffff"
+        letter-spacing="2">MCH</text>
+
+  <!-- Topo: chat bubble (indigo) -->
+  <g>
+    <circle cx="512" cy="192" r="78" fill="url(#indigoNodeGradI)"/>
+    <path d="M 470 168 H 554 a 16 16 0 0 1 16 16 v 30 a 16 16 0 0 1 -16 16 h -48 l -28 22 v -22 H 470 a 16 16 0 0 1 -16 -16 v -30 a 16 16 0 0 1 16 -16 z"
+          fill="#ffffff"/>
+    <circle cx="492" cy="198" r="5" fill="#1e1b4b"/>
+    <circle cx="512" cy="198" r="5" fill="#1e1b4b"/>
+    <circle cx="532" cy="198" r="5" fill="#1e1b4b"/>
+  </g>
+
+  <!-- NE: code </> (esmeralda) -->
+  <g>
+    <circle cx="816" cy="413" r="78" fill="url(#emeraldGradI)"/>
+    <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="794,389 770,413 794,437"/>
+      <polyline points="838,389 862,413 838,437"/>
+      <line x1="822" y1="382" x2="810" y2="444"/>
+    </g>
+  </g>
+
+  <!-- NW: bar chart (esmeralda) -->
+  <g>
+    <circle cx="208" cy="413" r="78" fill="url(#emeraldGradI)"/>
+    <g fill="#ffffff">
+      <rect x="180" y="402" width="18" height="42" rx="3"/>
+      <rect x="206" y="378" width="18" height="66" rx="3"/>
+      <rect x="232" y="412" width="18" height="32" rx="3"/>
+    </g>
+  </g>
+
+  <!-- SE: line chart (indigo) -->
+  <g>
+    <circle cx="700" cy="771" r="78" fill="url(#indigoNodeGradI)"/>
+    <polyline points="660,798 682,762 706,782 738,738"
+              fill="none" stroke="#ffffff" stroke-width="9"
+              stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="738" cy="738" r="7" fill="#10b981"/>
+    <circle cx="706" cy="782" r="5" fill="#ffffff"/>
+    <circle cx="682" cy="762" r="5" fill="#ffffff"/>
+    <circle cx="660" cy="798" r="5" fill="#ffffff"/>
+  </g>
+
+  <!-- SW: terminal >_ (indigo) -->
+  <g>
+    <circle cx="324" cy="771" r="78" fill="url(#indigoNodeGradI)"/>
+    <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="294,748 314,771 294,794"/>
+      <line x1="324" y1="797" x2="358" y2="797"/>
+    </g>
+  </g>
+</svg>
