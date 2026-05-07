@@ -41,7 +41,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   ].filter(Boolean).join(' ');
 
   return (
-    <button ref={ref} className={cls} {...rest}>
+    <button ref={ref} type="button" className={cls} {...rest}>
       <span aria-hidden="true">{icon}</span>
     </button>
   );

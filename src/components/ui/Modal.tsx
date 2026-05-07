@@ -55,7 +55,7 @@ export function Modal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-[var(--z-modal-backdrop)]"
             onClick={closeOnBackdrop ? onClose : undefined}
             aria-hidden="true"
           />
@@ -68,7 +68,7 @@ export function Modal({
             aria-modal="true"
             aria-labelledby={titleId}
             aria-describedby={descId}
-            className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] ${MAX_WIDTH[maxWidth]} max-h-[85vh] bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden border border-zinc-200`}
+            className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] ${MAX_WIDTH[maxWidth]} max-h-[85vh] bg-white rounded-2xl shadow-2xl z-[var(--z-modal)] flex flex-col overflow-hidden border border-zinc-200`}
           >
             {(title || description) && (
               <div className="flex items-start justify-between gap-4 p-5 border-b border-zinc-200 bg-zinc-50">
