@@ -1,6 +1,6 @@
-import React from 'react';
-import { X, BookOpen, Terminal, Code, Settings, Paperclip } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Terminal, Code, Settings, Paperclip } from 'lucide-react';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
 
 interface ManualModalProps {
   isOpen: boolean;
@@ -9,218 +9,113 @@ interface ManualModalProps {
 
 export default function ManualModal({ isOpen, onClose }: ManualModalProps) {
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-40 transition-opacity"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-4xl max-h-[85vh] bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden border border-zinc-200"
-          >
-            <div className="flex items-center justify-between p-6 border-b border-zinc-200 bg-zinc-50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <BookOpen className="w-6 h-6 text-indigo-700" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-zinc-900">Manual de Instruções & APIs</h2>
-                  <p className="text-sm text-zinc-500">Documentação para Agentes Multi-IA e NullClaw</p>
-                </div>
-              </div>
-              <button 
-                onClick={onClose}
-                className="p-2 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Manual de Instruções & APIs"
+      description="Documentação para Agentes Multi-IA, NullClaw e Engine Analítico"
+      maxWidth="4xl"
+      footer={
+        <Button variant="primary" onClick={onClose}>
+          Entendi, fechar manual
+        </Button>
+      }
+    >
+      <div className="space-y-8">
+        <section>
+          <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
+            <Terminal className="w-5 h-5 text-indigo-600" aria-hidden="true" /> 1. Comandos Internos
+          </h3>
+          <p className="mb-4 text-sm">
+            O Hub responde a comandos lógicos emitidos pelos agentes (no texto). Os agentes
+            devem usar a sintaxe abaixo para manipular o estado da aplicação.
+          </p>
+          <div className="bg-zinc-900 rounded-xl p-4 text-sm text-zinc-300 font-mono shadow-inner border border-zinc-800 space-y-3">
+            <CmdRow cmd="/criar_tarefa" args={'"Título" "Descrição" "Prazo"'} desc="Cria nova task no painel central." />
+            <CmdRow cmd="/concluir_tarefa" args={'"ID"'} desc="Marca a tarefa do ID como concluída." />
+            <CmdRow cmd="/remover_tarefa" args={'"ID"'} desc="Remove a tarefa pelo ID." />
+            <CmdRow cmd="/analisar_dados" args={'{"key":"value"} "Categoria"'} desc="Salva JSON em cache categorizado." />
+            <CmdRow cmd="/limpar_dados" args="" desc="Reseta dados analíticos temporários." />
+            <CmdRow cmd="/gerar_relatorio" args={'"Conteúdo" "Formato"'} desc="Adiciona relatório consolidado." />
+          </div>
+        </section>
 
-            <div className="flex-1 overflow-y-auto p-8 text-zinc-700 space-y-8">
-              <section>
-                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
-                  <Terminal className="w-5 h-5 text-indigo-600" /> 1. Overview de Comandos Internos
-                </h3>
-                <p className="mb-4">
-                  O Hub ouve e responde ativamente a comandos lógicos gerados pelos agentes (via output do texto).
-                  Os agentes deverão usar estes comandos de forma rigorosa na sintaxe proposta para manipular e modificar o estado da aplicação.
-                </p>
-                
-                <div className="bg-zinc-900 rounded-xl p-4 text-sm text-zinc-300 font-mono shadow-inner border border-zinc-800">
-                  <div className="mb-3">
-                     <span className="text-emerald-400 font-bold">/criar_tarefa</span> "Título" "Descrição" "Prazo"
-                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Cria e acopla uma nova task no painel central do usuário.</p>
-                  </div>
-                  <div className="mb-3">
-                     <span className="text-emerald-400 font-bold">/concluir_tarefa</span> "ID"
-                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Força a conclusão visual de uma das tarefas da Sidebar baseada no número ID.</p>
-                  </div>
-                  <div className="mb-3">
-                     <span className="text-emerald-400 font-bold">/remover_tarefa</span> "ID"
-                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Remove definitivamente a tarefa do Estado do hub baseado no seu ID.</p>
-                  </div>
-                  <div className="mb-3">
-                     <span className="text-emerald-400 font-bold">/analisar_dados</span> {"{"}\"key\":\"value\"{"}"} "Categoria"
-                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Salva trechos valiosos JSON para uso em memória cache rápida.</p>
-                  </div>
-                  <div className="mb-3">
-                     <span className="text-emerald-400 font-bold">/limpar_dados</span>
-                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Reseta todos os dados analíticos temporários da visualização JSON.</p>
-                  </div>
-                  <div>
-                     <span className="text-emerald-400 font-bold">/gerar_relatorio</span> "Conteudo finalizado em texto plano ou md" "Formato"
-                     <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">Força um log report direto para o painel de relatórios consolidados.</p>
-                  </div>
-                </div>
-              </section>
+        <section>
+          <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
+            <Code className="w-5 h-5 text-indigo-600" aria-hidden="true" /> 2. API Tools
+          </h3>
+          <p className="mb-4 text-sm">
+            Toda ferramenta no backend pode ser chamada via{' '}
+            <code className="bg-zinc-100 px-1 rounded">/use_tool nome {'{"args":...}'}</code>.
+            O backend executa e retorna a saída JSON no feed.
+          </p>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 shadow-sm">
+            <p className="text-sm font-semibold mb-2">Tools com backend (Express + Ollama local):</p>
+            <ul className="text-xs space-y-1.5 font-mono">
+              <li><b className="text-indigo-600">get_current_time</b> {'{}'}</li>
+              <li><b className="text-indigo-600">calculate_math</b> {'{ "expression": "2 + 2" }'}</li>
+              <li><b className="text-indigo-600">store_memory</b> {'{ "key": "x", "value": "y" }'}</li>
+              <li><b className="text-indigo-600">retrieve_memory</b> {'{ "key": "x" }'}</li>
+              <li><b className="text-indigo-600">github_list_repos</b> e <b className="text-indigo-600">github_create_issue</b></li>
+            </ul>
+          </div>
+        </section>
 
-              <section>
-                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
-                  <Code className="w-5 h-5 text-indigo-600" /> 2. API Proxy Hub & Tools
-                </h3>
-                <p className="mb-4">
-                   Toda ferramenta externa configurada no backend pode ser acionada remotamente pelos agentes utilizando o comando direto `use_tool`. O backend executa o código TS seguro e retorna a saída JSON no feed de conversa.
-                </p>
+        <section>
+          <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
+            <Code className="w-5 h-5 text-indigo-600" aria-hidden="true" /> 3. Quantum Analytical Engine (client-side)
+          </h3>
+          <p className="mb-4 text-sm">
+            Cinco análises em TypeScript puro executando no navegador (funcionam no Vercel sem backend). Use o botão{' '}
+            <Paperclip className="inline w-3 h-3 mx-1" aria-hidden="true" /> para carregar CSV/JSON;
+            o dataset é guardado em <code className="bg-zinc-100 px-1 rounded">dataCache[arquivo]</code>.
+          </p>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 shadow-sm space-y-3">
+            <Tool name="analyze_descriptive" args='{ "data": <obj|array> }' desc="count, mean, std, min, p25, p50, p75, max por coluna." />
+            <Tool name="analyze_predictive" args='{ "data": <obj|array>, "target_column": "y" }' desc="Regressão linear multivariada. target_column obrigatória." />
+            <Tool name="detect_anomalies" args='{ "data": <obj|array> }' desc="z-score multivariado, |z| > 2.5." />
+            <Tool name="optimize_linear" args="{}" desc="Programação linear (exemplo: min 2x+3y s.t. x+y≥10, x+2y≥15)." />
+            <Tool name="recommend_stack" args="{}" desc="Stack tecnológica recomendada." />
+          </div>
+        </section>
 
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden mt-4 shadow-sm">
-                  <div className="bg-zinc-200/50 p-3 font-mono text-xs border-b border-zinc-200 font-semibold text-zinc-700 flex justify-between">
-                     <span>Acionamento de Tools</span>
-                     <span className="px-2 py-0.5 bg-indigo-200 text-indigo-800 rounded">POST /api/tools/execute</span>
-                  </div>
-                  <div className="p-4">
-                     <p className="text-sm font-semibold mb-2">Sintaxe de execução exigida para a LLM:</p>
-                     <code className="block bg-zinc-900 text-zinc-300 p-3 rounded-lg text-sm font-mono whitespace-pre-wrap">
-                       /use_tool nome_da_ferramenta {"{"}"param1": "valor"{"}"}
-                     </code>
-                     <p className="text-xs text-zinc-500 mt-3 pt-3 border-t border-zinc-200">Exemplo prático: <span className="font-mono text-zinc-700">/use_tool get_current_time {"{"}{"}"}</span></p>
-                     
-                     <div className="mt-4 pt-4 border-t border-zinc-200">
-                       <p className="text-sm font-semibold mb-2">APIs Locais Disponíveis (Express Server):</p>
-                       <ul className="text-xs space-y-2 font-mono">
-                         <li><span className="text-indigo-600 font-bold">get_current_time</span> (Sem Args) - Retorna Data e Hora</li>
-                         <li><span className="text-indigo-600 font-bold">calculate_math</span> {"{ \"expression\": \"2 + 2\" }"} - Resolve expressões usando o backend</li>
-                         <li><span className="text-indigo-600 font-bold">store_memory</span> {"{ \"key\": \"x\", \"value\": \"y\" }"} - Salva uma string na memoria RAM do server</li>
-                         <li><span className="text-indigo-600 font-bold">retrieve_memory</span> {"{ \"key\": \"x\" }"} - Retorna a string salva no server</li>
-                         <li><span className="text-indigo-600 font-bold">github_list_repos</span> e <span className="text-indigo-600 font-bold">github_create_issue</span></li>
-                       </ul>
-                     </div>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
-                  <Code className="w-5 h-5 text-indigo-600" /> 3. Quantum Analytical Engine (Tools de Análise)
-                </h3>
-                <p className="mb-4">
-                  Cinco análises quantitativas executam localmente em TypeScript puro (sem Python). Aceitam
-                  dados em formato colunar <code className="bg-zinc-100 px-1 rounded">{"{col: number[]}"}</code> ou
-                  por linhas <code className="bg-zinc-100 px-1 rounded">[{"{col: val}"}]</code>. Use o botão
-                  <Paperclip className="inline w-3 h-3 mx-1" /> para carregar CSV/JSON — o dataset é guardado em
-                  <code className="bg-zinc-100 px-1 rounded ml-1">dataCache[nome_arquivo]</code> e referenciado nas chamadas.
-                </p>
-
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden mt-4 shadow-sm">
-                  <div className="bg-zinc-200/50 p-3 font-mono text-xs border-b border-zinc-200 font-semibold text-zinc-700">
-                     Tools de Análise
-                  </div>
-                  <div className="p-4">
-                     <ul className="text-xs space-y-3 font-mono">
-                       <li>
-                         <span className="text-indigo-600 font-bold">analyze_descriptive</span> {"{ \"data\": <obj|array> }"}
-                         <p className="text-zinc-500 mt-1 font-sans">Estatísticas (count, mean, std, min, p25, p50, p75, max) por coluna numérica.</p>
-                       </li>
-                       <li>
-                         <span className="text-indigo-600 font-bold">analyze_predictive</span> {"{ \"data\": <obj|array>, \"target_column\": \"y\" }"}
-                         <p className="text-zinc-500 mt-1 font-sans">Regressão linear multivariada. <span className="text-red-600">target_column é obrigatória</span> e deve ser numérica.</p>
-                       </li>
-                       <li>
-                         <span className="text-indigo-600 font-bold">detect_anomalies</span> {"{ \"data\": <obj|array> }"}
-                         <p className="text-zinc-500 mt-1 font-sans">Z-score multivariado: linha é anomalia se |z| {">"} 2.5 em qualquer feature.</p>
-                       </li>
-                       <li>
-                         <span className="text-indigo-600 font-bold">optimize_linear</span> {"{}"}
-                         <p className="text-zinc-500 mt-1 font-sans">Programação linear (exemplo padrão: minimizar 2x+3y s.t. x+y≥10, x+2y≥15).</p>
-                       </li>
-                       <li>
-                         <span className="text-indigo-600 font-bold">recommend_stack</span> {"{}"}
-                         <p className="text-zinc-500 mt-1 font-sans">Retorna stack tecnológica recomendada (saída fixa).</p>
-                       </li>
-                     </ul>
-
-                     <div className="mt-4 pt-4 border-t border-zinc-200">
-                       <p className="text-sm font-semibold mb-2">Mapa de intenções (LLM → análise):</p>
-                       <table className="w-full text-xs border-collapse">
-                         <thead>
-                           <tr className="bg-zinc-100">
-                             <th className="text-left p-2 border border-zinc-200">Palavras-chave</th>
-                             <th className="text-left p-2 border border-zinc-200">Tool</th>
-                           </tr>
-                         </thead>
-                         <tbody>
-                           <tr><td className="p-2 border border-zinc-200">prever, estimar, regressão, vendas futuras</td><td className="p-2 border border-zinc-200 font-mono">analyze_predictive</td></tr>
-                           <tr><td className="p-2 border border-zinc-200">fraude, outlier, atípico, anomalia</td><td className="p-2 border border-zinc-200 font-mono">detect_anomalies</td></tr>
-                           <tr><td className="p-2 border border-zinc-200">resumo, médias, desvio padrão</td><td className="p-2 border border-zinc-200 font-mono">analyze_descriptive</td></tr>
-                           <tr><td className="p-2 border border-zinc-200">minimizar custos, otimizar recursos</td><td className="p-2 border border-zinc-200 font-mono">optimize_linear</td></tr>
-                           <tr><td className="p-2 border border-zinc-200">qual stack, qual banco, que linguagem</td><td className="p-2 border border-zinc-200 font-mono">recommend_stack</td></tr>
-                         </tbody>
-                       </table>
-                     </div>
-
-                     <div className="mt-4 pt-4 border-t border-zinc-200">
-                       <p className="text-sm font-semibold mb-2">Persistência:</p>
-                       <p className="text-xs text-zinc-600">Mensagens, tarefas, datasets carregados e relatórios são salvos em <code className="bg-zinc-100 px-1 rounded">localStorage</code>. Use <code className="bg-zinc-100 px-1 rounded">/reset</code> no input para limpar tudo.</p>
-                     </div>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
-                  <Settings className="w-5 h-5 text-indigo-600" /> 4. Integração com Gateway Externo (NullClaw API)
-                </h3>
-                <p className="mb-4">
-                  O NullClaw pode receber chamadas de eventos webhook padronizados baseados no `pairing code` de segurança, que autentica localmente chamadas locais ou com o servidor Zig.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl shadow-sm">
-                      <h4 className="font-bold text-indigo-900 text-sm mb-2 uppercase text-[10px]">Webhook Post Payload Requerido</h4>
-                      <pre className="text-xs bg-white border border-zinc-200 p-2 rounded-lg text-zinc-600 font-mono">
+        <section>
+          <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2 mb-4">
+            <Settings className="w-5 h-5 text-indigo-600" aria-hidden="true" /> 4. Gateway Externo (NullClaw)
+          </h3>
+          <p className="mb-4 text-sm">
+            Webhook autenticado por <code className="bg-zinc-100 px-1 rounded">Bearer &lt;TOKEN&gt;</code>{' '}
+            (código de pareamento). Payload:
+          </p>
+          <pre className="text-xs bg-zinc-900 text-zinc-300 p-3 rounded-lg font-mono overflow-x-auto">
 {`{
   "message": "conteúdo da prompt",
   "history": [contextos],
   "agent_id": "identificador opcional"
 }`}
-                      </pre>
-                   </div>
-                   <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl shadow-sm">
-                      <h4 className="font-bold text-indigo-900 text-sm mb-2 uppercase text-[10px]">Autenticação</h4>
-                      <p className="text-sm">
-                        O Payload usa Authorization <code className="bg-white border rounded px-1">Bearer &lt;TOKEN&gt;</code> onde TOKEN é o código de pareamento configurado no painel de agentes. A injeção das Tools deve acontecer do lado do Zig caso chamadas de hardware e OS local sejam exigidas.
-                      </p>
-                   </div>
-                </div>
-              </section>
-            </div>
-            
-            <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex justify-end">
-              <button 
-                onClick={onClose}
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-sm"
-              >
-                Entendi, fechar manual
-              </button>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </pre>
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
+function CmdRow({ cmd, args, desc }: { cmd: string; args: string; desc: string }) {
+  return (
+    <div>
+      <span className="text-emerald-400 font-bold">{cmd}</span>
+      {args && <> {args}</>}
+      <p className="text-zinc-500 mt-1 ml-4 text-xs font-sans">{desc}</p>
+    </div>
+  );
+}
+
+function Tool({ name, args, desc }: { name: string; args: string; desc: string }) {
+  return (
+    <div>
+      <code className="text-indigo-600 font-bold">{name}</code>{' '}
+      <code className="text-zinc-700 text-xs">{args}</code>
+      <p className="text-zinc-500 text-xs mt-1">{desc}</p>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Agent, Message, Channel, Task, AnalysisResult } from '../types';
 import { executeAnalysis, AnalysisType } from '../lib/analyticalEngine';
+import { useConfirm } from '../components/ui/ConfirmDialog';
 
 const CLIENT_ANALYSIS_TOOLS: Record<string, AnalysisType> = {
   analyze_descriptive: 'descritiva',
@@ -23,6 +24,7 @@ interface ChatContextType {
   externalAgentURL: string;
   pairingCode: string;
   thinkingLevel: 'LOW' | 'HIGH';
+  isLoading: boolean;
 
   setCurrentChannel: (ch: string) => void;
   addChannel: (ch: Channel) => void;
@@ -165,6 +167,7 @@ function extractBalancedJson(text: string, start: number): { json: string; end: 
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const persisted = loadPersisted();
+  const confirm = useConfirm();
 
   const [messages, setMessages] = useState<Message[]>(persisted.messages?.length ? persisted.messages : DEFAULT_MESSAGES);
   const [channels, setChannels] = useState<Channel[]>(persisted.channels?.length ? persisted.channels : DEFAULT_CHANNELS);
@@ -178,6 +181,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [externalAgentURL, setExternalAgentURL] = useState('http://127.0.0.1:3000');
   const [pairingCode, setPairingCode] = useState('');
   const [thinkingLevel, setThinkingLevel] = useState<'LOW' | 'HIGH'>('HIGH');
+  const [isLoading, setIsLoading] = useState(false);
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -322,13 +326,27 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     if (input.startsWith('/')) {
       if (input === '/clear') {
-        setMessages((prev) => prev.filter((m) => m.channel !== currentChannel));
+        const ok = await confirm({
+          title: 'Limpar canal?',
+          message: `Todas as mensagens do canal "${currentChannel}" serão apagadas.`,
+          confirmLabel: 'Limpar',
+          variant: 'danger',
+        });
+        if (ok) setMessages((prev) => prev.filter((m) => m.channel !== currentChannel));
       } else if (input === '/reset') {
-        setMessages(DEFAULT_MESSAGES);
-        setTasks([]);
-        setDataCache({});
-        setReports([]);
-        localStorage.removeItem(STORAGE_KEY);
+        const ok = await confirm({
+          title: 'Resetar tudo?',
+          message: 'Mensagens, tarefas, datasets e relatórios serão apagados permanentemente.',
+          confirmLabel: 'Resetar',
+          variant: 'danger',
+        });
+        if (ok) {
+          setMessages(DEFAULT_MESSAGES);
+          setTasks([]);
+          setDataCache({});
+          setReports([]);
+          localStorage.removeItem(STORAGE_KEY);
+        }
       } else {
         addMessage({ id: Date.now(), channel: currentChannel, sender: 'Sistema', text: 'Comandos locais: /clear, /reset' });
       }
@@ -336,6 +354,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
 
     addMessage({ id: Date.now(), channel: currentChannel, sender: 'User', text: input });
+    setIsLoading(true);
 
     try {
       let responseText = '';
@@ -376,6 +395,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       await processCommands(responseText);
     } catch (e) {
       addMessage({ id: Date.now() + 2, channel: currentChannel, sender: 'Sistema', text: 'Falha de comunicação.' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -469,7 +490,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ChatContext.Provider value={{
-      messages, channels, currentChannel, agents, tasks, dataCache, reports, notifications, activeAgentIndex, externalAgentURL, pairingCode, thinkingLevel,
+      messages, channels, currentChannel, agents, tasks, dataCache, reports, notifications, activeAgentIndex, externalAgentURL, pairingCode, thinkingLevel, isLoading,
       setCurrentChannel, addChannel: (ch) => setChannels([...channels, ch]), addMessage, sendMessage,
       registerAgent: (ag) => setAgents([...agents, ag]),
       updateAgent: (i, ag) => { const newAg = [...agents]; newAg[i] = ag; setAgents(newAg); },
