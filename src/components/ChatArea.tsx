@@ -1,10 +1,13 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useContext, useEffect, useRef, useState } from 'react';
 import { Send, Bot, Mic, Paperclip } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ChatContext } from '../context/ChatContext';
-import AnalysisChart from './AnalysisChart';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
+
+// Charts puxam recharts (~400KB minified). Lazy load: so baixa quando
+// uma mensagem com .analysis e renderizada.
+const AnalysisChart = lazy(() => import('./AnalysisChart'));
 
 export default function ChatArea() {
   const ctx = useContext(ChatContext);
@@ -90,7 +93,11 @@ export default function ChatArea() {
                   {msg.sender}
                 </span>
                 <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                {msg.analysis && <AnalysisChart result={msg.analysis} />}
+                {msg.analysis && (
+                  <Suspense fallback={<div className="mt-2 text-xs text-zinc-500 italic">Carregando gráfico…</div>}>
+                    <AnalysisChart result={msg.analysis} />
+                  </Suspense>
+                )}
               </div>
             </motion.div>
           ))
