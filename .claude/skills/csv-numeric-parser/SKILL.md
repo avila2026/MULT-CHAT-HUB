@@ -24,8 +24,7 @@ function splitCsvLine(line: string): string[];
 // csv-numeric-parser.ts
 export function parseCsv(text: string): Record<string, number[]> {
   const lines = text
-    .replace(/\r\n/g, '\n')
-    .split('\n')
+    .split(/\r?\n/)
     .filter((l) => l.trim().length > 0);
   if (lines.length < 2) throw new Error('CSV vazio ou apenas com cabeçalho.');
   const headers = splitCsvLine(lines[0]);

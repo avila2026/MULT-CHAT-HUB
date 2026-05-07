@@ -45,4 +45,4 @@ E corpo dividido em:
 
 ## Histórico
 
-- **2026-05-07**: Skills 1–8 extraídas do `MULT-CHAT-HUB` v2 (PR #7).
+- **2026-05-07**: Skills 1–8 extraídas do `MULT-CHAT-HUB` v2 (branch `claude/skills-extraction`) — primeiro PR da iniciativa de redesign; o segundo PR (`claude/redesign-v2`) traz componentes UI base, design tokens e refactor mobile.
