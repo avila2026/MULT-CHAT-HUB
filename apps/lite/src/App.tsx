@@ -8,6 +8,7 @@ import { BookOpen, Menu, Moon, Sun, Users } from 'lucide-react';
 import { ChatProvider } from './context/ChatContext';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import AgentConfig from './components/AgentConfig';
 import ManualModal from './components/ManualModal';
 import { Button } from './components/ui/Button';
@@ -35,6 +36,7 @@ export default function App() {
   }, [isDark]);
 
   return (
+    <ErrorBoundary>
     <ConfirmDialogProvider>
       <ChatProvider>
         <div className="h-dvh w-full bg-zinc-50 dark:bg-zinc-950 flex flex-col font-sans overflow-hidden text-zinc-900 dark:text-zinc-100 selection:bg-indigo-100 selection:text-indigo-900">
@@ -136,5 +138,6 @@ export default function App() {
         </div>
       </ChatProvider>
     </ConfirmDialogProvider>
+    </ErrorBoundary>
   );
 }
