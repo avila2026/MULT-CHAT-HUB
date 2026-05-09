@@ -1,0 +1,9 @@
+{
+  "name": "@mch/tools-registry",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "description": "Registry de tools built-in + manifests"
+}

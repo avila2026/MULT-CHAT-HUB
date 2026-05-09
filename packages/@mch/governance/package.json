@@ -1,0 +1,9 @@
+{
+  "name": "@mch/governance",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "description": "Budgets, audit log, kill switch (cloud-only; no-op no lite)"
+}
