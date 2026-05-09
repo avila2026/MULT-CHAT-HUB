@@ -64,6 +64,18 @@
   --z-tooltip: 60;
 }
 
+/* === Dark mode — sobrescreve tokens neutros === */
+.dark {
+  --color-fg: #f4f4f5;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-bg: #09090b;
+  --color-bg-muted: #18181b;
+  --color-bg-subtle: #27272a;
+  --color-border: #27272a;
+  --color-border-strong: #3f3f46;
+}
+
 /* Estilo global de focus-visible — base para todos os controles
  * interativos. Componentes Button/IconButton aplicam overrides com
  * ring colorido. */

@@ -20,9 +20,9 @@ export default function Sidebar() {
   return (
     <div className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto">
       <section aria-labelledby="channels-heading">
-        <h2 id="channels-heading" className="font-semibold mb-3 text-zinc-800">Canais</h2>
+        <h2 id="channels-heading" className="font-semibold mb-3 text-zinc-800 dark:text-zinc-200">Canais</h2>
         {channels.length === 0 ? (
-          <p className="text-xs text-zinc-500 italic">Nenhum canal. Crie um abaixo.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 italic">Nenhum canal. Crie um abaixo.</p>
         ) : (
           <ul className="space-y-1" role="list">
             {channels.map((channel) => {
@@ -35,7 +35,7 @@ export default function Sidebar() {
                     className={`w-full text-left h-11 px-3 rounded-lg text-sm transition-colors min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 ${
                       isActive
                         ? 'bg-indigo-600 text-white font-medium'
-                        : 'hover:bg-zinc-100 text-zinc-700'
+                        : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                     }`}
                   >
                     # {channel.name} {channel.isPrivate && <span aria-label="canal privado">🔒</span>}
@@ -46,14 +46,14 @@ export default function Sidebar() {
           </ul>
         )}
 
-        <div className="mt-4 p-3 bg-zinc-50 border border-zinc-200 rounded-lg space-y-2">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase block">Novo canal</label>
+        <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-2">
+          <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase block">Novo canal</label>
           <input
             type="text"
             value={newChannel}
             onChange={(e) => setNewChannel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
-            className="w-full h-10 px-2 border border-zinc-300 rounded-md text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="w-full h-10 px-2 border border-zinc-300 dark:border-zinc-600 rounded-md text-xs bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             placeholder="ex: marketing"
             aria-label="Nome do novo canal"
           />
@@ -70,15 +70,15 @@ export default function Sidebar() {
         </div>
       </section>
 
-      <section aria-labelledby="state-heading" className="pt-4 border-t border-zinc-200">
-        <h2 id="state-heading" className="font-semibold mb-3 text-zinc-800 text-sm">Estado Geral</h2>
-        <div className="space-y-3 text-xs text-zinc-600">
+      <section aria-labelledby="state-heading" className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+        <h2 id="state-heading" className="font-semibold mb-3 text-zinc-800 dark:text-zinc-200 text-sm">Estado Geral</h2>
+        <div className="space-y-3 text-xs text-zinc-600 dark:text-zinc-400">
           <div>
-            <h3 className="font-medium text-zinc-800 uppercase text-[10px] mb-1">
+            <h3 className="font-medium text-zinc-800 dark:text-zinc-300 uppercase text-[10px] mb-1">
               Tarefas Ativas ({tasks.length})
             </h3>
             {tasks.length === 0 ? (
-              <p className="text-zinc-400 italic">Nenhuma tarefa.</p>
+              <p className="text-zinc-400 dark:text-zinc-600 italic">Nenhuma tarefa.</p>
             ) : (
               <ul className="list-disc pl-4 space-y-1" role="list">
                 {tasks.map((t) => (
@@ -90,11 +90,11 @@ export default function Sidebar() {
             )}
           </div>
           <div>
-            <h3 className="font-medium text-zinc-800 uppercase text-[10px] mb-1">
+            <h3 className="font-medium text-zinc-800 dark:text-zinc-300 uppercase text-[10px] mb-1">
               Relatórios ({reports.length})
             </h3>
             {reports.length === 0 ? (
-              <p className="text-zinc-400 italic">Nenhum relatório gerado.</p>
+              <p className="text-zinc-400 dark:text-zinc-600 italic">Nenhum relatório gerado.</p>
             ) : (
               <ul className="list-disc pl-4 space-y-1" role="list">
                 {reports.map((r, i) => (
