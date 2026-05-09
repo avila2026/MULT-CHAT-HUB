@@ -1,0 +1,9 @@
+{
+  "name": "@mch/schema",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "description": "Drizzle ORM schema dual (SQLite lite + Postgres cloud)"
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build:frontend",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile=false",
+  "buildCommand": "pnpm --filter @mch/lite build:frontend",
+  "outputDirectory": "apps/lite/dist",
   "framework": "vite",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }

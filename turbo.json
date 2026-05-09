@@ -1,0 +1,34 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env.example", "tsconfig.base.json"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "server-dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "build:lite": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "server-dist/**", "release/**"]
+    },
+    "build:cloud": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "lint": {},
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:lite": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:cloud": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

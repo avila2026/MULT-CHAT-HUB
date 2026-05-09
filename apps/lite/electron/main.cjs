@@ -17,7 +17,7 @@ function startBackend() {
   const serverPath = getServerPath();
 
   if (!fs.existsSync(serverPath)) {
-    console.error(`[Electron] server-dist nao encontrado em ${serverPath}. Rode 'npm run build:server' antes de empacotar.`);
+    console.error(`[Electron] server-dist nao encontrado em ${serverPath}. Rode 'pnpm --filter @mch/lite build:server' antes de empacotar.`);
     return;
   }
 

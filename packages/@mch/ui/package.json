@@ -1,0 +1,9 @@
+{
+  "name": "@mch/ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "description": "Componentes React compartilhados (Button, Modal, etc)"
+}

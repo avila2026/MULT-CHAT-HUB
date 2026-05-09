@@ -1,0 +1,9 @@
+{
+  "name": "@mch/tokens",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "description": "Design tokens compartilhados (CSS vars + JS export)"
+}

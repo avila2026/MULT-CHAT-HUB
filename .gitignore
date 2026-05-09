@@ -1,10 +1,14 @@
 node_modules/
-dist/
-coverage/
+.pnpm-store/
+**/dist/
+**/server-dist/
+**/coverage/
+**/.next/
+**/.turbo/
 .DS_Store
 *.log
 .env*
 !.env.example
 
-release/
-server-dist/
+**/release/
+package-lock.json
