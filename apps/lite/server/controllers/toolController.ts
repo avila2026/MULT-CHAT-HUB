@@ -5,7 +5,8 @@ import { executeAnalysis, AnalysisType } from '../../src/lib/analyticalEngine.js
 // Avaliador matemático seguro sem usar Function() ou eval().
 // Suporta: números, +, -, *, /, **, %, parênteses, operadores unários.
 function safeEval(expr: string): number {
-  const matched = expr.replace(/\s+/g, '').match(/(\d+\.?\d*|\.\d+|[+\-*/%()**]|\(|\))/g);
+  // \*\* deve vir antes de * na alternância para ser capturado como token único
+  const matched = expr.replace(/\s+/g, '').match(/(\d+\.?\d*|\.\d+|\*\*|[+\-\/%()])/g);
   if (!matched) throw new Error('Expressão vazia ou inválida.');
   const tokens: string[] = matched;
   let pos = 0;
@@ -37,9 +38,10 @@ function safeEval(expr: string): number {
     return left;
   }
 
+  // Recursão direita garante associatividade à direita: 2**3**2 = 2**(3**2) = 512
   function parsePow(): number {
-    let base = parseUnary();
-    if (peek() === '**') { consume(); base = Math.pow(base, parseUnary()); }
+    const base = parseUnary();
+    if (peek() === '**') { consume(); return Math.pow(base, parsePow()); }
     return base;
   }
 

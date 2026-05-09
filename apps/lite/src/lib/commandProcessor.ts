@@ -86,7 +86,7 @@ export async function processCommands(responseText: string, ctx: CommandContext)
   if (responseText.includes('/criar_tarefa')) {
     const match = responseText.match(/\/criar_tarefa\s+"([^"]+)"\s+"([^"]+)"\s+"([^"]+)"/);
     if (match) {
-      setTasks((prev) => [...prev, { id: prev.length + 1, title: match[1], description: match[2], deadline: match[3], status: 'pendente' }]);
+      setTasks((prev) => [...prev, { id: (prev.length > 0 ? Math.max(...prev.map((t) => t.id)) : 0) + 1, title: match[1], description: match[2], deadline: match[3], status: 'pendente' }]);
       addMessage({ id: newMsgId(), channel, sender: 'Sistema', text: `Tarefa criada: ${match[1]}` });
     }
   }
