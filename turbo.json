@@ -6,6 +6,22 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "server-dist/**", ".next/**", "!.next/cache/**"]
     },
+    "build:frontend": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "build:frontend:electron": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "build:server": {
+      "dependsOn": ["^build"],
+      "outputs": ["server-dist/**"]
+    },
+    "build:electron": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "server-dist/**"]
+    },
     "build:lite": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "server-dist/**", "release/**"]
@@ -23,6 +39,7 @@
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {},
+    "typecheck": {},
     "test": {
       "dependsOn": ["^build"]
     },
@@ -30,11 +47,7 @@
       "cache": false,
       "persistent": true
     },
-    "dev:lite": {
-      "cache": false,
-      "persistent": true
-    },
-    "dev:cloud": {
+    "dev:all": {
       "cache": false,
       "persistent": true
     }

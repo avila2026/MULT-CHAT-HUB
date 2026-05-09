@@ -3,7 +3,6 @@
 // Sem dependências Python: substitui pandas/sklearn/scipy por implementações nativas + libs npm leves.
 
 import MultivariateLinearRegression from 'ml-regression-multivariate-linear';
-// @ts-ignore — pacote sem typings oficiais
 import lpSolver from 'javascript-lp-solver';
 
 export type AnalysisType = 'descritiva' | 'preditiva' | 'anomalias' | 'otimizacao' | 'software';
@@ -191,7 +190,7 @@ function optimization(): Record<string, unknown> {
   // Exemplo padrão do manual: minimizar 2x + 3y sujeito a x+y>=10, x+2y>=15, x,y>=0
   const model = {
     optimize: 'cost',
-    opType: 'min',
+    opType: 'min' as const,
     constraints: {
       c1: { min: 10 },
       c2: { min: 15 }
@@ -206,7 +205,7 @@ function optimization(): Record<string, unknown> {
   return {
     success,
     status: success ? 'Optimal' : 'Infeasible',
-    optimal_values: success ? [round(result.x ?? 0), round(result.y ?? 0)] : null,
+    optimal_values: success ? [round(Number(result.x ?? 0)), round(Number(result.y ?? 0))] : null,
     minimum_cost: success ? round(result.result) : null,
     problem: 'min 2x + 3y  s.t.  x+y>=10, x+2y>=15, x,y>=0'
   };

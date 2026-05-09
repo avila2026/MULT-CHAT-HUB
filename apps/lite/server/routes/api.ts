@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/chat', handleChat);
 router.post('/tools/execute', handleToolExecution);
-router.get('/tools', (req, res) => {
+router.get('/tools', (_req, res) => {
   res.json(availableTools);
 });
 

@@ -5,5 +5,11 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "description": "Wrapper de sandbox (Docker em cloud, isolated-vm em lite)"
+  "description": "Wrapper de sandbox (Docker em cloud, isolated-vm em lite)",
+  "scripts": {
+    "build": "echo stub",
+    "lint": "echo stub",
+    "typecheck": "echo stub",
+    "test": "echo stub"
+  }
 }

@@ -1,7 +1,7 @@
 export interface Tool {
   name: string;
   description: string;
-  parameters: any;
+  parameters: Record<string, string>;
 }
 
 export interface Agent {
@@ -25,7 +25,7 @@ export interface AnalysisResult {
 }
 
 export interface Message {
-  id: number;
+  id: string;
   channel: string;
   sender: string;
   text: string;

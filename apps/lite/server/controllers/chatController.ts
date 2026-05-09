@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'fazendaavila2026/avila:latest';
+const OLLAMA_TIMEOUT_MS = 90_000;
 
 const SYSTEM_INSTRUCTION = [
   "Você é o Multi-AI Collaboration Hub, um sistema que orquestra múltiplas IAs em uma equipe colaborativa com agentes especializados.",
@@ -37,9 +38,23 @@ const SYSTEM_INSTRUCTION = [
   "Sempre que o usuário pedir uma análise sobre dados que estão no cache, emita o /use_tool correspondente em uma única linha sem quebra dentro do JSON."
 ].join('\n');
 
+interface HistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+function slog(level: 'INFO' | 'WARN' | 'ERROR', reqId: string, msg: string, extra?: Record<string, unknown>) {
+  const entry = { ts: new Date().toISOString(), level, reqId, msg, ...extra };
+  if (level === 'ERROR') console.error(JSON.stringify(entry));
+  else console.log(JSON.stringify(entry));
+}
+
 export const handleChat = async (req: Request, res: Response) => {
+  const reqId = (req as Request & { id?: string }).id ?? crypto.randomUUID().slice(0, 8);
+  const t0 = Date.now();
+
   try {
-    const { input, model = OLLAMA_MODEL, thinking = 'HIGH' } = req.body;
+    const { input, model = OLLAMA_MODEL, thinking = 'HIGH', history = [] } = req.body;
 
     if (!input) {
       return res.status(400).json({ error: 'Input form is required' });
@@ -47,38 +62,60 @@ export const handleChat = async (req: Request, res: Response) => {
 
     const numPredict = thinking === 'HIGH' ? 2048 : 512;
 
+    const historyMessages: HistoryMessage[] = (Array.isArray(history) ? history : [])
+      .slice(-10)
+      .map((m: { role: string; content: string }) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: String(m.content),
+      }));
+
+    const messages = [
+      { role: 'system', content: SYSTEM_INSTRUCTION },
+      ...historyMessages,
+      { role: 'user', content: input },
+    ];
+
+    slog('INFO', reqId, 'ollama_request', { model, thinking, historyTurns: historyMessages.length });
+
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+
     let ollamaResponse: globalThis.Response;
     try {
       ollamaResponse = await fetch(`${OLLAMA_HOST}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: SYSTEM_INSTRUCTION },
-            { role: 'user', content: input }
-          ],
-          stream: false,
-          options: { num_predict: numPredict }
-        })
+        body: JSON.stringify({ model, messages, stream: false, options: { num_predict: numPredict } }),
+        signal: controller.signal,
       });
-    } catch (err: any) {
-      return res.status(503).json({
-        error: `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve' e baixe o modelo: 'ollama pull ${model}'. Detalhe: ${err.message}`
-      });
+    } catch (err: unknown) {
+      clearTimeout(timeoutHandle);
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      const errMsg = isTimeout
+        ? `Ollama não respondeu em ${OLLAMA_TIMEOUT_MS / 1000}s. Verifique se o modelo está carregado: 'ollama run ${model}'.`
+        : `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve' e baixe: 'ollama pull ${model}'. Detalhe: ${err instanceof Error ? err.message : String(err)}`;
+      slog('WARN', reqId, 'ollama_unreachable', { isTimeout, durationMs: Date.now() - t0 });
+      return res.status(503).json({ error: errMsg });
+    } finally {
+      clearTimeout(timeoutHandle);
     }
 
     if (!ollamaResponse.ok) {
       const text = await ollamaResponse.text();
+      slog('WARN', reqId, 'ollama_http_error', { status: ollamaResponse.status, durationMs: Date.now() - t0 });
       return res.status(ollamaResponse.status).json({
-        error: `Ollama respondeu ${ollamaResponse.status}: ${text}`
+        error: `Ollama respondeu ${ollamaResponse.status}: ${text}`,
       });
     }
 
-    const data: any = await ollamaResponse.json();
-    return res.json({ text: data?.message?.content || 'Sem resposta do modelo.' });
-  } catch (error: any) {
-    console.error('Error generic chat handler:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    const data = await ollamaResponse.json() as { message?: { content?: string } };
+    const responseText = data?.message?.content || 'Sem resposta do modelo.';
+    slog('INFO', reqId, 'ollama_ok', { durationMs: Date.now() - t0, chars: responseText.length });
+
+    return res.json({ text: responseText });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Internal Server Error';
+    slog('ERROR', reqId, 'chat_unhandled_error', { error: msg, durationMs: Date.now() - t0 });
+    return res.status(500).json({ error: msg });
   }
 };
