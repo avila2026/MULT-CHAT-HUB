@@ -5,9 +5,15 @@ import { executeAnalysis, AnalysisType } from '../../src/lib/analyticalEngine.js
 // Avaliador matemático seguro sem usar Function() ou eval().
 // Suporta: números, +, -, *, /, **, %, parênteses, operadores unários.
 function safeEval(expr: string): number {
-  // \*\* deve vir antes de * na alternância para ser capturado como token único
-  const matched = expr.replace(/\s+/g, '').match(/(\d+\.?\d*|\.\d+|\*\*|[+\-\/%()])/g);
+  const normalized = expr.replace(/\s+/g, '');
+  // \*\* deve vir antes de \* para ser capturado como token único (expoente)
+  const TOKEN_RE = /\d+\.?\d*|\.\d+|\*\*|[+\-\/*%()]/g;
+  const matched = normalized.match(TOKEN_RE);
   if (!matched) throw new Error('Expressão vazia ou inválida.');
+  // Rejeita se os tokens capturados não reconstituem a string inteira —
+  // isso garante que caracteres não suportados (letras, ponto-e-vírgula,
+  // colchetes…) causem erro em vez de serem silenciosamente descartados.
+  if (matched.join('') !== normalized) throw new Error('Caracteres não suportados na expressão.');
   const tokens: string[] = matched;
   let pos = 0;
 

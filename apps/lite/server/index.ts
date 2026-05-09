@@ -10,17 +10,23 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Permite apenas origens localhost em desenvolvimento e o próprio app Electron (file://)
+// Permite apenas origens localhost e o próprio app Electron.
+// Electron via file:// envia Origin: null — tratado explicitamente abaixo.
 const ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'http://localhost:4173',
+  'http://localhost:3001', // Vite dev server (pnpm dev)
+  'http://localhost:5173', // Vite dev fallback
+  'http://localhost:4173', // Vite preview
   `http://localhost:${PORT}`,
-  'file://',
 ];
 app.use(cors({
   origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin || ALLOWED_ORIGINS.some((o) => origin.startsWith(o))) cb(null, true);
-    else cb(new Error(`CORS bloqueado: ${origin}`));
+    // origin === undefined  → same-origin / non-browser (curl, Electron ipcRenderer)
+    // origin === 'null'     → Electron file:// pages send "Origin: null"
+    if (!origin || origin === 'null' || ALLOWED_ORIGINS.some((o) => origin.startsWith(o))) {
+      cb(null, true);
+    } else {
+      cb(new Error(`CORS bloqueado: ${origin}`));
+    }
   },
 }));
 app.use(express.json({ limit: '1mb' }));

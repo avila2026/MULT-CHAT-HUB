@@ -56,6 +56,94 @@ const DEFAULT_AGENTS: Agent[] = [
     tools: []
   },
   {
+    name: 'Agente de Análise',
+    specialty: 'Análise de Dados & BI',
+    description: 'Especialista em análise descritiva, preditiva, detecção de anomalias e otimização linear sobre datasets carregados.',
+    permissions: ['tools', 'data_read'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'HIGH',
+    tools: [
+      { name: 'analyze_descriptive', description: 'Estatísticas descritivas por coluna', parameters: { data: 'object' } },
+      { name: 'analyze_predictive', description: 'Regressão linear multivariada', parameters: { data: 'object', target_column: 'string' } },
+      { name: 'detect_anomalies', description: 'Detecção de anomalias via z-score', parameters: { data: 'object' } },
+      { name: 'optimize_linear', description: 'Otimização linear (LP)', parameters: {} }
+    ]
+  },
+  {
+    name: 'Agente de Tools',
+    specialty: 'Execução de Ferramentas',
+    description: 'Dispatcher de ferramentas do backend: matemática, tempo, memória e análises. Interpreta /use_tool e roteia ao endpoint correto.',
+    permissions: ['tools', 'backend'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'LOW',
+    tools: [
+      { name: 'get_current_time', description: 'Data e hora atual', parameters: {} },
+      { name: 'calculate_math', description: 'Calculadora matemática segura', parameters: { expression: 'string' } },
+      { name: 'store_memory', description: 'Salva valor em memória', parameters: { key: 'string', value: 'string' } },
+      { name: 'retrieve_memory', description: 'Recupera valor da memória', parameters: { key: 'string' } }
+    ]
+  },
+  {
+    name: 'Agente GitHub',
+    specialty: 'Integração GitHub',
+    description: 'Gerencia repositórios e issues via API do GitHub. Requer GITHUB_TOKEN configurado no backend.',
+    permissions: ['tools', 'github'],
+    provider: 'GitHub API',
+    status: 'Ativo',
+    thinkingLevel: 'LOW',
+    tools: [
+      { name: 'github_list_repos', description: 'Lista repositórios de um usuário', parameters: { username: 'string' } },
+      { name: 'github_create_issue', description: 'Cria issue em repositório', parameters: { owner: 'string', repo: 'string', title: 'string', body: 'string' } }
+    ]
+  },
+  {
+    name: 'Agente de Memória',
+    specialty: 'Persistência & Contexto',
+    description: 'Gerencia memória de curto e longo prazo do hub. Salva e recupera contexto entre sessões via store_memory/retrieve_memory.',
+    permissions: ['memory', 'tools'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'LOW',
+    tools: [
+      { name: 'store_memory', description: 'Persiste valor por chave', parameters: { key: 'string', value: 'string' } },
+      { name: 'retrieve_memory', description: 'Recupera valor por chave', parameters: { key: 'string' } }
+    ]
+  },
+  {
+    name: 'Agente de Relatórios',
+    specialty: 'Geração de Relatórios',
+    description: 'Consolida resultados de análises, tarefas e métricas em relatórios estruturados via /gerar_relatorio.',
+    permissions: ['reports', 'data_read'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'HIGH',
+    tools: []
+  },
+  {
+    name: 'Agente de Segurança',
+    specialty: 'Auditoria & Conformidade',
+    description: 'Monitora entradas suspeitas, valida expressões matemáticas e audita uso de ferramentas. Bloqueia payloads maliciosos.',
+    permissions: ['audit', 'read_only'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'HIGH',
+    tools: []
+  },
+  {
+    name: 'Agente de Monetização',
+    specialty: 'Estratégia & Receita',
+    description: 'Analisa métricas de uso, sugere modelos de precificação e identifica oportunidades de crescimento com base nos dados do hub.',
+    permissions: ['data_read', 'reports'],
+    provider: 'Interno',
+    status: 'Ativo',
+    thinkingLevel: 'HIGH',
+    tools: [
+      { name: 'recommend_stack', description: 'Recomenda stack tecnológica', parameters: {} }
+    ]
+  },
+  {
     name: 'NullClaw Gateway',
     specialty: 'Automação Local',
     description: 'Conecte seu motor NullClaw rodando localmente.',

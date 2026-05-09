@@ -5,5 +5,11 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "description": "Adaptadores LLM unificados (Ollama, OpenAI, Anthropic, Gemini, OpenRouter)"
+  "description": "Adaptadores LLM unificados (Ollama, OpenAI, Anthropic, Gemini, OpenRouter)",
+  "scripts": {
+    "build": "echo stub",
+    "lint": "echo stub",
+    "typecheck": "echo stub",
+    "test": "echo stub"
+  }
 }
