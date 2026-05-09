@@ -19,6 +19,7 @@ const SYSTEM_INSTRUCTION = [
   "  calculate_math {\"expression\":\"...\"}",
   "  store_memory {\"key\":\"...\",\"value\":\"...\"} / retrieve_memory {\"key\":\"...\"}",
   "  github_list_repos {\"username\":\"...\"} / github_create_issue {\"owner\":\"...\",\"repo\":\"...\",\"title\":\"...\",\"body\":\"...\"}",
+  "  webhook_call {\"url\":\"...\",\"payload\":{...},\"headers\":{...}} — envia POST para webhook externo.",
   "  analyze_descriptive {\"data\":<obj|array>} — estatísticas (mean, std, quartis) por coluna.",
   "  analyze_predictive {\"data\":<obj|array>,\"target_column\":\"...\"} — regressão linear; target_column OBRIGATÓRIA.",
   "  detect_anomalies {\"data\":<obj|array>} — z-score multivariado, marca outliers.",

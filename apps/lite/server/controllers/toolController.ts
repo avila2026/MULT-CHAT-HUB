@@ -60,6 +60,11 @@ export const availableTools = [
     name: 'recommend_stack',
     description: 'Retorna stack tecnológica recomendada para projetos analíticos. Parâmetros: {}',
     parameters: {}
+  },
+  {
+    name: 'webhook_call',
+    description: 'Envia um POST JSON para uma URL de webhook externo. Parâmetros: { "url": "string", "payload": object, "headers": object (opcional) }',
+    parameters: { url: 'string', payload: 'object', headers: 'object' }
   }
 ];
 
@@ -143,6 +148,31 @@ export const handleToolExecution = async (req: Request, res: Response) => {
       } catch (err: any) {
         const isValidation = typeof err.message === 'string' && err.message.startsWith('Erro_');
         return res.status(isValidation ? 400 : 500).json({ error: err.message || 'Falha na análise.' });
+      }
+    }
+
+    if (toolName === 'webhook_call') {
+      try {
+        const url = new URL(args.url);
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(typeof args.headers === 'object' && args.headers !== null ? args.headers : {})
+        };
+        const response = await fetch(url.toString(), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(args.payload || {})
+        });
+        const bodyText = await response.text();
+        let bodyJson;
+        try { bodyJson = JSON.parse(bodyText); } catch { /* ignore parse error */ }
+        return res.json({
+          result: `Webhook ${url.toString()} retornou ${response.status}.`,
+          responseStatus: response.status,
+          responseBody: bodyJson !== undefined ? bodyJson : bodyText
+        });
+      } catch (err: any) {
+        return res.status(400).json({ error: `Falha ao chamar webhook: ${err.message}` });
       }
     }
 

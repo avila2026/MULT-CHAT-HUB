@@ -71,6 +71,16 @@ const DEFAULT_AGENTS: Agent[] = [
     status: 'Offline',
     thinkingLevel: 'HIGH',
     tools: []
+  },
+  {
+    name: 'OpenClaw Automator',
+    specialty: 'Integração Webhook Genérico',
+    description: 'Agente para automação via webhooks externos. Configure um endpoint URL e dispare automações para qualquer API compatível.',
+    permissions: ['tools', 'webhook'],
+    provider: 'Webhook Externo',
+    status: 'Offline',
+    thinkingLevel: 'HIGH',
+    tools: [{ name: 'webhook_call', description: 'POST para webhook configurado', parameters: { url: 'string', payload: 'object', headers: 'object' } }]
   }
 ];
 
@@ -376,6 +386,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         } else {
           responseText = `Erro no Gateway (${response.status}).`;
         }
+      } else if (activeAgentIndex !== null && agents[activeAgentIndex].provider === 'Webhook Externo') {
+        senderName = agents[activeAgentIndex].name;
+        responseText = 'Aguardando configuração de URL de webhook. Defina a URL no campo "Conectar Gateway Externo" (URL) e envie /use_tool webhook_call para testar.';
       } else {
         senderName = activeAgentIndex !== null ? agents[activeAgentIndex].name : 'Orquestrador Hub';
         const response = await fetch('/api/chat', {
