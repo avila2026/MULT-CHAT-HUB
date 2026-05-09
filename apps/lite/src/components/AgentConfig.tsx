@@ -108,11 +108,12 @@ export default function AgentConfig() {
             </label>
             <input
               id="pairing-code"
-              type="text"
+              type="password"
               value={pairingCode}
               onChange={(e) => setPairingCode(e.target.value)}
               className="w-full mt-1 h-10 px-2 border border-zinc-300 rounded-lg text-sm bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              placeholder="ex: 793564"
+              placeholder="••••••"
+              autoComplete="off"
             />
           </div>
           <Button

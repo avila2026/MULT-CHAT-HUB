@@ -2,8 +2,73 @@ import { Request, Response } from 'express';
 import { Octokit } from '@octokit/rest';
 import { executeAnalysis, AnalysisType } from '../../src/lib/analyticalEngine.js';
 
-// O Octokit lerá o token do seu .env
-const octokit = new Octokit({ auth: process.env.VITE_GITHUB_TOKEN || '' });
+// Avaliador matemático seguro sem usar Function() ou eval().
+// Suporta: números, +, -, *, /, **, %, parênteses, operadores unários.
+function safeEval(expr: string): number {
+  const matched = expr.replace(/\s+/g, '').match(/(\d+\.?\d*|\.\d+|[+\-*/%()**]|\(|\))/g);
+  if (!matched) throw new Error('Expressão vazia ou inválida.');
+  const tokens: string[] = matched;
+  let pos = 0;
+
+  function peek() { return tokens[pos]; }
+  function consume() { return tokens[pos++]; }
+
+  function parseExpr(): number { return parseAddSub(); }
+
+  function parseAddSub(): number {
+    let left = parseMulDiv();
+    while (peek() === '+' || peek() === '-') {
+      const op = consume();
+      const right = parseMulDiv();
+      left = op === '+' ? left + right : left - right;
+    }
+    return left;
+  }
+
+  function parseMulDiv(): number {
+    let left = parsePow();
+    while (peek() === '*' || peek() === '/' || peek() === '%') {
+      const op = consume();
+      const right = parsePow();
+      if (op === '*') left *= right;
+      else if (op === '/') { if (right === 0) throw new Error('Divisão por zero.'); left /= right; }
+      else left %= right;
+    }
+    return left;
+  }
+
+  function parsePow(): number {
+    let base = parseUnary();
+    if (peek() === '**') { consume(); base = Math.pow(base, parseUnary()); }
+    return base;
+  }
+
+  function parseUnary(): number {
+    if (peek() === '-') { consume(); return -parsePrimary(); }
+    if (peek() === '+') { consume(); return parsePrimary(); }
+    return parsePrimary();
+  }
+
+  function parsePrimary(): number {
+    const tok = peek();
+    if (tok === '(') {
+      consume();
+      const val = parseExpr();
+      if (consume() !== ')') throw new Error('Parêntese não fechado.');
+      return val;
+    }
+    if (tok !== undefined && /^\d/.test(tok)) { consume(); return parseFloat(tok); }
+    throw new Error(`Token inesperado: ${tok}`);
+  }
+
+  const result = parseExpr();
+  if (pos !== tokens.length) throw new Error('Expressão mal formada.');
+  if (!Number.isFinite(result)) throw new Error('Resultado inválido (infinito ou NaN).');
+  return result;
+}
+
+// O Octokit lerá o token do seu .env (sem prefixo VITE_ — variável backend-only)
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN || '' });
 
 export const availableTools = [
   {
@@ -111,8 +176,7 @@ export const handleToolExecution = async (req: Request, res: Response) => {
 
     if (toolName === 'calculate_math') {
        try {
-         const expression = String(args.expression).replace(/[^0-9+\-*/().]/g, '');
-         const result = Function(`"use strict"; return (${expression})`)();
+         const result = safeEval(String(args.expression));
          return res.json({ result: `O resultado de ${args.expression} é ${result}` });
        } catch(e) {
          return res.json({ result: `Expressão matemática inválida: ${args.expression}` });

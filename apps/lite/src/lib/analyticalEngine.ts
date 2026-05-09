@@ -3,7 +3,6 @@
 // Sem dependências Python: substitui pandas/sklearn/scipy por implementações nativas + libs npm leves.
 
 import MultivariateLinearRegression from 'ml-regression-multivariate-linear';
-// @ts-ignore — pacote sem typings oficiais
 import lpSolver from 'javascript-lp-solver';
 
 export type AnalysisType = 'descritiva' | 'preditiva' | 'anomalias' | 'otimizacao' | 'software';

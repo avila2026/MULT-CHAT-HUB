@@ -36,9 +36,14 @@ const SYSTEM_INSTRUCTION = [
   "Sempre que o usuário pedir uma análise sobre dados que estão no cache, emita o /use_tool correspondente em uma única linha sem quebra dentro do JSON."
 ].join('\n');
 
+interface HistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export const handleChat = async (req: Request, res: Response) => {
   try {
-    const { input, model = OLLAMA_MODEL, thinking = 'HIGH' } = req.body;
+    const { input, model = OLLAMA_MODEL, thinking = 'HIGH', history = [] } = req.body;
 
     if (!input) {
       return res.status(400).json({ error: 'Input form is required' });
@@ -46,38 +51,46 @@ export const handleChat = async (req: Request, res: Response) => {
 
     const numPredict = thinking === 'HIGH' ? 2048 : 512;
 
+    // Monta o histórico de conversa — máximo 10 turnos para não estourar contexto
+    const historyMessages: HistoryMessage[] = (Array.isArray(history) ? history : [])
+      .slice(-10)
+      .map((m: { role: string; content: string }) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: String(m.content),
+      }));
+
+    const messages = [
+      { role: 'system', content: SYSTEM_INSTRUCTION },
+      ...historyMessages,
+      { role: 'user', content: input },
+    ];
+
     let ollamaResponse: globalThis.Response;
     try {
       ollamaResponse = await fetch(`${OLLAMA_HOST}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: SYSTEM_INSTRUCTION },
-            { role: 'user', content: input }
-          ],
-          stream: false,
-          options: { num_predict: numPredict }
-        })
+        body: JSON.stringify({ model, messages, stream: false, options: { num_predict: numPredict } }),
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       return res.status(503).json({
-        error: `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve' e baixe o modelo: 'ollama pull ${model}'. Detalhe: ${err.message}`
+        error: `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve' e baixe o modelo: 'ollama pull ${model}'. Detalhe: ${msg}`,
       });
     }
 
     if (!ollamaResponse.ok) {
       const text = await ollamaResponse.text();
       return res.status(ollamaResponse.status).json({
-        error: `Ollama respondeu ${ollamaResponse.status}: ${text}`
+        error: `Ollama respondeu ${ollamaResponse.status}: ${text}`,
       });
     }
 
-    const data: any = await ollamaResponse.json();
+    const data = await ollamaResponse.json() as { message?: { content?: string } };
     return res.json({ text: data?.message?.content || 'Sem resposta do modelo.' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Internal Server Error';
     console.error('Error generic chat handler:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return res.status(500).json({ error: msg });
   }
 };
