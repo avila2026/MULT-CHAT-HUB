@@ -42,6 +42,7 @@ export async function processCommands(responseText: string, ctx: CommandContext)
               data: args.data,
               analysisType: CLIENT_ANALYSIS_TOOLS[toolName],
               targetColumn: args.target_column,
+              optimizationModel: args.optimizationModel,
             });
             addMessage({
               id: newMsgId(),

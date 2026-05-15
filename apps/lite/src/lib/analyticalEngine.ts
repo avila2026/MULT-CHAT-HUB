@@ -10,10 +10,18 @@ export type AnalysisType = 'descritiva' | 'preditiva' | 'anomalias' | 'otimizaca
 export type ColumnarData = Record<string, number[]>;
 export type RowData = Array<Record<string, number>>;
 
+export interface OptimizationModel {
+  optimize: string;
+  opType: 'min' | 'max';
+  constraints: Record<string, { min?: number; max?: number }>;
+  variables: Record<string, Record<string, number>>;
+}
+
 export interface AnalysisInput {
   data?: ColumnarData | RowData;
   analysisType: AnalysisType;
   targetColumn?: string;
+  optimizationModel?: OptimizationModel;
 }
 
 export interface AnalysisResult {
@@ -75,16 +83,21 @@ function descriptive(cols: ColumnarData): Record<string, unknown> {
     const n = arr.length;
     const mean = arr.reduce((a, b) => a + b, 0) / n;
     const variance = arr.reduce((acc, v) => acc + (v - mean) ** 2, 0) / Math.max(1, n - 1);
+    const std = Math.sqrt(variance);
     const sorted = [...arr].sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[n - 1];
     summary[col] = {
       count: n,
       mean: round(mean),
-      std: round(Math.sqrt(variance)),
-      min: sorted[0],
+      std: round(std),
+      min,
       p25: round(quantile(sorted, 0.25)),
       p50: round(quantile(sorted, 0.5)),
       p75: round(quantile(sorted, 0.75)),
-      max: sorted[n - 1]
+      max,
+      range: round(max - min),
+      cv: mean !== 0 ? round((std / Math.abs(mean)) * 100) : NaN,
     };
   }
   return {
@@ -131,12 +144,22 @@ function predictive(cols: ColumnarData, targetColumn: string | undefined): Recor
   });
   const intercept = round(weights[weights.length - 1][0]);
 
-  const samplePredictions = model.predict(X.slice(0, 10)).map((row) => round(row[0]));
+  const allPredictions = model.predict(X).map((row) => row[0]);
+  const yFlat = y.map((row) => row[0]);
+  const yMean = yFlat.reduce((a, b) => a + b, 0) / yFlat.length;
+  const ssTot = yFlat.reduce((acc, v) => acc + (v - yMean) ** 2, 0);
+  const ssRes = yFlat.reduce((acc, v, i) => acc + (v - allPredictions[i]) ** 2, 0);
+  const r2 = ssTot > 0 ? round(1 - ssRes / ssTot) : 1;
+  const rmse = round(Math.sqrt(ssRes / yFlat.length));
+
+  const samplePredictions = allPredictions.slice(0, 10).map(round);
 
   return {
     model: 'LinearRegression',
     coefficients,
     intercept,
+    r2,
+    rmse,
     sample_predictions: samplePredictions
   };
 }
@@ -164,13 +187,14 @@ function anomalies(cols: ColumnarData): Record<string, unknown> {
   for (let i = 0; i < n; i++) {
     let isAnomaly = false;
     let maxZ = 0;
+    let peakCol = '';
     for (const c of numCols) {
       const z = Math.abs((cols[c][i] - stats[c].mean) / stats[c].std);
-      if (z > maxZ) maxZ = z;
+      if (z > maxZ) { maxZ = z; peakCol = c; }
       if (z > ANOMALY_THRESHOLD) isAnomaly = true;
     }
     if (isAnomaly) {
-      const sample: Record<string, number | string> = { row_index: i, max_z: round(maxZ) };
+      const sample: Record<string, number | string> = { row_index: i, max_z: round(maxZ), peak_column: peakCol };
       for (const c of numCols) sample[c] = cols[c][i];
       anomalyRows.push(sample);
     }
@@ -186,28 +210,41 @@ function anomalies(cols: ColumnarData): Record<string, unknown> {
 
 // --- 4. Otimização linear ---
 
-function optimization(): Record<string, unknown> {
-  // Exemplo padrão do manual: minimizar 2x + 3y sujeito a x+y>=10, x+2y>=15, x,y>=0
-  const model = {
-    optimize: 'cost',
-    opType: 'min' as const,
-    constraints: {
-      c1: { min: 10 },
-      c2: { min: 15 }
-    },
-    variables: {
-      x: { cost: 2, c1: 1, c2: 1 },
-      y: { cost: 3, c1: 1, c2: 2 }
-    }
-  };
-  const result = lpSolver.Solve(model);
+const DEFAULT_LP_MODEL = {
+  optimize: 'cost',
+  opType: 'min' as const,
+  constraints: { c1: { min: 10 }, c2: { min: 15 } },
+  variables: { x: { cost: 2, c1: 1, c2: 1 }, y: { cost: 3, c1: 1, c2: 2 } },
+};
+const DEFAULT_LP_DESCRIPTION = 'min 2x + 3y  s.t.  x+y>=10, x+2y>=15, x,y>=0';
+
+function optimization(userModel?: OptimizationModel): Record<string, unknown> {
+  const isCustom = !!userModel;
+  const lpModel = isCustom
+    ? { ...userModel, opType: userModel.opType }
+    : DEFAULT_LP_MODEL;
+
+  const result = lpSolver.Solve(lpModel);
   const success = result.feasible === true;
+
+  const varNames = Object.keys(lpModel.variables);
+  const optimalValues: Record<string, number> = {};
+  if (success) {
+    for (const v of varNames) {
+      optimalValues[v] = round(Number((result as Record<string, unknown>)[v] ?? 0));
+    }
+  }
+
+  const problemDescription = isCustom
+    ? `${userModel.opType} ${userModel.optimize}  (${varNames.join(', ')} variáveis)`
+    : DEFAULT_LP_DESCRIPTION;
+
   return {
     success,
     status: success ? 'Optimal' : 'Infeasible',
-    optimal_values: success ? [round(Number(result.x ?? 0)), round(Number(result.y ?? 0))] : null,
-    minimum_cost: success ? round(result.result) : null,
-    problem: 'min 2x + 3y  s.t.  x+y>=10, x+2y>=15, x,y>=0'
+    optimal_values: success ? optimalValues : null,
+    objective_value: success ? round(result.result) : null,
+    problem: problemDescription,
   };
 }
 
@@ -257,7 +294,7 @@ export function executeAnalysis(input: AnalysisInput): AnalysisResult {
       result.analysis_result = anomalies(cols);
       break;
     case 'otimizacao':
-      result.analysis_result = optimization();
+      result.analysis_result = optimization(input.optimizationModel);
       break;
     case 'software':
       result.analysis_result = softwareRecommendation();
