@@ -2,25 +2,7 @@ import { useContext, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { ChatContext } from '../context/ChatContext';
 import { Button } from './ui/Button';
-import type { ProviderName } from '../types';
-
-const PROVIDER_LABELS: Record<ProviderName, string> = {
-  ollama:     'Ollama',
-  openai:     'OpenAI',
-  anthropic:  'Anthropic',
-  gemini:     'Gemini',
-  openrouter: 'OpenRouter',
-};
-
-const PROVIDER_ORDER: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter'];
-
-const NEEDS_API_KEY: Record<ProviderName, boolean> = {
-  ollama: false,
-  openai: true,
-  anthropic: true,
-  gemini: true,
-  openrouter: true,
-};
+import { PROVIDER_LABELS, NEEDS_API_KEY, PROVIDER_ORDER } from '../lib/providerAdapters';
 
 export default function AgentConfig() {
   const ctx = useContext(ChatContext);

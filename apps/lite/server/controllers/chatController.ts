@@ -91,12 +91,15 @@ export const handleChat = async (req: Request, res: Response) => {
     const timeoutMs = provider === 'ollama' ? OLLAMA_TIMEOUT_MS : CLOUD_TIMEOUT_MS;
     const maxTokens = thinking === 'HIGH' ? 2048 : 512;
 
-    const historyMessages: HistoryMessage[] = (Array.isArray(history) ? history : [])
+    const rawHistory = (Array.isArray(history) ? history : [])
       .slice(-10)
       .map((m: { role: string; content: string }) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
+        role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: String(m.content),
       }));
+    // Anthropic/Gemini require first non-system message to be 'user'
+    const firstUser = rawHistory.findIndex((m) => m.role === 'user');
+    const historyMessages: HistoryMessage[] = firstUser >= 0 ? rawHistory.slice(firstUser) : [];
 
     const messages = [
       { role: 'system' as const, content: SYSTEM_INSTRUCTION },

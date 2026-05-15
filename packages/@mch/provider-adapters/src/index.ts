@@ -22,28 +22,50 @@ export interface ProviderAdapter {
 }
 
 export const DEFAULT_MODELS: Record<ProviderName, string> = {
-  ollama: 'fazendaavila2026/avila:latest',
-  openai: 'gpt-4o-mini',
-  anthropic: 'claude-haiku-4-5-20251001',
-  gemini: 'gemini-2.0-flash-lite',
+  ollama:     'fazendaavila2026/avila:latest',
+  openai:     'gpt-4o-mini',
+  anthropic:  'claude-haiku-4-5-20251001',
+  gemini:     'gemini-2.0-flash-lite',
   openrouter: 'openai/gpt-4o-mini',
 };
 
 export const PROVIDER_LABELS: Record<ProviderName, string> = {
-  ollama: 'Ollama',
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  gemini: 'Gemini',
+  ollama:     'Ollama',
+  openai:     'OpenAI',
+  anthropic:  'Anthropic',
+  gemini:     'Gemini',
   openrouter: 'OpenRouter',
 };
 
 export const NEEDS_API_KEY: Record<ProviderName, boolean> = {
-  ollama: false,
-  openai: true,
-  anthropic: true,
-  gemini: true,
+  ollama:     false,
+  openai:     true,
+  anthropic:  true,
+  gemini:     true,
   openrouter: true,
 };
+
+export const PROVIDER_ORDER: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter'];
+
+// Anthropic and Gemini require messages to strictly alternate user/assistant
+// and the first non-system message must be 'user'. This merges consecutive
+// same-role messages and drops any leading assistant messages.
+function normalizeConversation(messages: { role: 'user' | 'assistant'; content: string }[]): { role: 'user' | 'assistant'; content: string }[] {
+  const merged: { role: 'user' | 'assistant'; content: string }[] = [];
+  for (const msg of messages) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === msg.role) {
+      last.content = last.content + '\n' + msg.content;
+    } else {
+      merged.push({ role: msg.role, content: msg.content });
+    }
+  }
+  // Drop leading assistant messages — APIs require first message to be 'user'
+  while (merged.length > 0 && merged[0].role !== 'user') {
+    merged.shift();
+  }
+  return merged;
+}
 
 // ── Ollama ────────────────────────────────────────────────────────────────────
 
@@ -91,9 +113,9 @@ class AnthropicAdapter implements ProviderAdapter {
 
   async chat({ messages, model, maxTokens, apiKey = '', signal }: AdapterChatParams): Promise<string> {
     const systemMsg = messages.find((m) => m.role === 'system')?.content ?? '';
-    const convMessages = messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    const convMessages = normalizeConversation(
+      messages.filter((m) => m.role !== 'system') as { role: 'user' | 'assistant'; content: string }[]
+    );
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -126,12 +148,13 @@ class GeminiAdapter implements ProviderAdapter {
 
   async chat({ messages, model, maxTokens, apiKey = '', signal }: AdapterChatParams): Promise<string> {
     const systemMsg = messages.find((m) => m.role === 'system')?.content;
-    const contents = messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
+    const normalized = normalizeConversation(
+      messages.filter((m) => m.role !== 'system') as { role: 'user' | 'assistant'; content: string }[]
+    );
+    const contents = normalized.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
 
     const body: Record<string, unknown> = {
       contents,
@@ -140,7 +163,7 @@ class GeminiAdapter implements ProviderAdapter {
     if (systemMsg) body['system_instruction'] = { parts: [{ text: systemMsg }] };
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
