@@ -1,8 +1,19 @@
 import { Request, Response } from 'express';
+import { createAdapter, DEFAULT_MODELS, ProviderName } from '../../src/lib/providerAdapters.js';
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'fazendaavila2026/avila:latest';
+
 const OLLAMA_TIMEOUT_MS = 90_000;
+const CLOUD_TIMEOUT_MS = 60_000;
+
+const ENV_KEYS: Record<ProviderName, string> = {
+  ollama: '',
+  openai: process.env.OPENAI_API_KEY ?? '',
+  anthropic: process.env.ANTHROPIC_API_KEY ?? '',
+  gemini: process.env.GEMINI_API_KEY ?? '',
+  openrouter: process.env.OPENROUTER_API_KEY ?? '',
+};
 
 const SYSTEM_INSTRUCTION = [
   "Você é o Multi-AI Collaboration Hub, um sistema que orquestra múltiplas IAs em uma equipe colaborativa com agentes especializados.",
@@ -49,18 +60,36 @@ function slog(level: 'INFO' | 'WARN' | 'ERROR', reqId: string, msg: string, extr
   else console.log(JSON.stringify(entry));
 }
 
+function resolveProvider(raw: unknown): ProviderName {
+  const valid: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter'];
+  return valid.includes(raw as ProviderName) ? (raw as ProviderName) : 'ollama';
+}
+
 export const handleChat = async (req: Request, res: Response) => {
   const reqId = (req as Request & { id?: string }).id ?? crypto.randomUUID().slice(0, 8);
   const t0 = Date.now();
 
   try {
-    const { input, model = OLLAMA_MODEL, thinking = 'HIGH', history = [] } = req.body;
+    const {
+      input,
+      thinking = 'HIGH',
+      history = [],
+      provider: rawProvider,
+      model: modelOverride,
+      apiKey: reqApiKey,
+    } = req.body;
 
     if (!input) {
       return res.status(400).json({ error: 'Input form is required' });
     }
 
-    const numPredict = thinking === 'HIGH' ? 2048 : 512;
+    const provider = resolveProvider(rawProvider);
+    const defaultModel = provider === 'ollama' ? OLLAMA_MODEL : DEFAULT_MODELS[provider];
+    const model = (typeof modelOverride === 'string' && modelOverride.trim()) ? modelOverride.trim() : defaultModel;
+    const apiKey = (typeof reqApiKey === 'string' && reqApiKey.trim()) ? reqApiKey.trim() : ENV_KEYS[provider];
+    const baseUrl = provider === 'ollama' ? OLLAMA_HOST : undefined;
+    const timeoutMs = provider === 'ollama' ? OLLAMA_TIMEOUT_MS : CLOUD_TIMEOUT_MS;
+    const maxTokens = thinking === 'HIGH' ? 2048 : 512;
 
     const historyMessages: HistoryMessage[] = (Array.isArray(history) ? history : [])
       .slice(-10)
@@ -70,48 +99,41 @@ export const handleChat = async (req: Request, res: Response) => {
       }));
 
     const messages = [
-      { role: 'system', content: SYSTEM_INSTRUCTION },
+      { role: 'system' as const, content: SYSTEM_INSTRUCTION },
       ...historyMessages,
-      { role: 'user', content: input },
+      { role: 'user' as const, content: input },
     ];
 
-    slog('INFO', reqId, 'ollama_request', { model, thinking, historyTurns: historyMessages.length });
+    slog('INFO', reqId, 'chat_request', { provider, model, thinking, historyTurns: historyMessages.length });
 
     const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+    const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
 
-    let ollamaResponse: globalThis.Response;
+    let responseText: string;
     try {
-      ollamaResponse = await fetch(`${OLLAMA_HOST}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, messages, stream: false, options: { num_predict: numPredict } }),
-        signal: controller.signal,
-      });
+      const adapter = createAdapter(provider);
+      responseText = await adapter.chat({ messages, model, maxTokens, apiKey, baseUrl, signal: controller.signal });
     } catch (err: unknown) {
       clearTimeout(timeoutHandle);
       const isTimeout = err instanceof Error && err.name === 'AbortError';
-      const errMsg = isTimeout
-        ? `Ollama não respondeu em ${OLLAMA_TIMEOUT_MS / 1000}s. Verifique se o modelo está carregado: 'ollama run ${model}'.`
-        : `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve' e baixe: 'ollama pull ${model}'. Detalhe: ${err instanceof Error ? err.message : String(err)}`;
-      slog('WARN', reqId, 'ollama_unreachable', { isTimeout, durationMs: Date.now() - t0 });
+      let errMsg: string;
+      if (isTimeout) {
+        errMsg = provider === 'ollama'
+          ? `Ollama não respondeu em ${timeoutMs / 1000}s. Verifique se o modelo está carregado: 'ollama run ${model}'.`
+          : `${provider} não respondeu em ${timeoutMs / 1000}s. Verifique sua conexão.`;
+      } else {
+        const detail = err instanceof Error ? err.message : String(err);
+        errMsg = provider === 'ollama'
+          ? `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve' e baixe: 'ollama pull ${model}'. Detalhe: ${detail}`
+          : `Erro ao chamar ${provider}: ${detail}`;
+      }
+      slog('WARN', reqId, 'adapter_error', { provider, isTimeout, durationMs: Date.now() - t0 });
       return res.status(503).json({ error: errMsg });
     } finally {
       clearTimeout(timeoutHandle);
     }
 
-    if (!ollamaResponse.ok) {
-      const text = await ollamaResponse.text();
-      slog('WARN', reqId, 'ollama_http_error', { status: ollamaResponse.status, durationMs: Date.now() - t0 });
-      return res.status(ollamaResponse.status).json({
-        error: `Ollama respondeu ${ollamaResponse.status}: ${text}`,
-      });
-    }
-
-    const data = await ollamaResponse.json() as { message?: { content?: string } };
-    const responseText = data?.message?.content || 'Sem resposta do modelo.';
-    slog('INFO', reqId, 'ollama_ok', { durationMs: Date.now() - t0, chars: responseText.length });
-
+    slog('INFO', reqId, 'chat_ok', { provider, model, durationMs: Date.now() - t0, chars: responseText.length });
     return res.json({ text: responseText });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Internal Server Error';

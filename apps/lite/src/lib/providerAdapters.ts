@@ -1,4 +1,7 @@
-// Adaptadores LLM unificados (Ollama, OpenAI, Anthropic, Gemini, OpenRouter)
+// Adaptadores LLM para o servidor Express (apps/lite).
+// Espelha a interface de @mch/provider-adapters — quando o workspace
+// estiver com pnpm install completo, este arquivo pode ser substituído
+// por um import direto do pacote.
 
 export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter';
 
@@ -22,27 +25,11 @@ export interface ProviderAdapter {
 }
 
 export const DEFAULT_MODELS: Record<ProviderName, string> = {
-  ollama: 'fazendaavila2026/avila:latest',
-  openai: 'gpt-4o-mini',
-  anthropic: 'claude-haiku-4-5-20251001',
-  gemini: 'gemini-2.0-flash-lite',
+  ollama:     'fazendaavila2026/avila:latest',
+  openai:     'gpt-4o-mini',
+  anthropic:  'claude-haiku-4-5-20251001',
+  gemini:     'gemini-2.0-flash-lite',
   openrouter: 'openai/gpt-4o-mini',
-};
-
-export const PROVIDER_LABELS: Record<ProviderName, string> = {
-  ollama: 'Ollama',
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  gemini: 'Gemini',
-  openrouter: 'OpenRouter',
-};
-
-export const NEEDS_API_KEY: Record<ProviderName, boolean> = {
-  ollama: false,
-  openai: true,
-  anthropic: true,
-  gemini: true,
-  openrouter: true,
 };
 
 // ── Ollama ────────────────────────────────────────────────────────────────────
