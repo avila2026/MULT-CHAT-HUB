@@ -9,6 +9,6 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["server/**/*.ts", "src/lib/analyticalEngine.ts", "src/types/**/*.d.ts"],
+  "include": ["server/**/*.ts", "src/lib/analyticalEngine.ts", "src/lib/providerAdapters.ts", "src/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "release", "server-dist"]
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
-import { Agent, Message, Channel, Task, AnalysisResult } from '../types';
+import { Agent, Message, Channel, Task, AnalysisResult, ProviderName, ProviderConfig } from '../types';
 import { useConfirm } from '../components/ui/ConfirmDialog';
 import { parseCsv, newMsgId } from '../lib/utils';
 import { processCommands } from '../lib/commandProcessor';
@@ -18,6 +18,8 @@ interface ChatContextType {
   pairingCode: string;
   thinkingLevel: 'LOW' | 'HIGH';
   isLoading: boolean;
+  activeProvider: ProviderName;
+  providerConfig: Record<ProviderName, ProviderConfig>;
 
   setCurrentChannel: (ch: string) => void;
   addChannel: (ch: Channel) => void;
@@ -27,6 +29,8 @@ interface ChatContextType {
   updateAgent: (index: number, agent: Agent) => void;
   setActiveAgentIndex: (index: number | null) => void;
   setThinkingLevel: (level: 'LOW' | 'HIGH') => void;
+  setActiveProvider: (p: ProviderName) => void;
+  updateProviderConfig: (p: ProviderName, cfg: Partial<ProviderConfig>) => void;
   setExternalAgentURL: (url: string) => void;
   setPairingCode: (code: string) => void;
   connectExternalAgent: () => Promise<void>;
@@ -38,6 +42,14 @@ export const ChatContext = createContext<ChatContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'mch:state:v1';
 const MAX_PERSIST_MESSAGES = 100;
+
+const DEFAULT_PROVIDER_CONFIG: Record<ProviderName, ProviderConfig> = {
+  ollama:     { model: 'fazendaavila2026/avila:latest', apiKey: '' },
+  openai:     { model: 'gpt-4o-mini', apiKey: '' },
+  anthropic:  { model: 'claude-haiku-4-5-20251001', apiKey: '' },
+  gemini:     { model: 'gemini-2.0-flash-lite', apiKey: '' },
+  openrouter: { model: 'openai/gpt-4o-mini', apiKey: '' },
+};
 
 const DEFAULT_MESSAGES: Message[] = [
   { id: '1', channel: 'Geral', sender: 'Sistema', text: 'Bem-vindo ao Hub de Colaboração Multi-IA. Por favor, apresente-se ou proponha uma tarefa.' }
@@ -171,6 +183,8 @@ interface PersistedState {
   tasks: Task[];
   dataCache: Record<string, unknown>;
   reports: string[];
+  activeProvider?: ProviderName;
+  providerConfig?: Record<ProviderName, ProviderConfig>;
 }
 
 function loadPersisted(): Partial<PersistedState> {
@@ -197,6 +211,17 @@ function persistState(state: PersistedState): void {
   }
 }
 
+function mergeProviderConfig(
+  saved: Partial<Record<ProviderName, ProviderConfig>> | undefined
+): Record<ProviderName, ProviderConfig> {
+  if (!saved) return { ...DEFAULT_PROVIDER_CONFIG };
+  const result = { ...DEFAULT_PROVIDER_CONFIG };
+  for (const p of Object.keys(DEFAULT_PROVIDER_CONFIG) as ProviderName[]) {
+    if (saved[p]) result[p] = { ...result[p], ...saved[p] };
+  }
+  return result;
+}
+
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const persisted = loadPersisted();
   const confirm = useConfirm();
@@ -214,6 +239,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [pairingCode, setPairingCode] = useState('');
   const [thinkingLevel, setThinkingLevel] = useState<'LOW' | 'HIGH'>('HIGH');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<ProviderName>(
+    () => (persisted.activeProvider ?? 'ollama')
+  );
+  const [providerConfig, setProviderConfig] = useState<Record<ProviderName, ProviderConfig>>(
+    () => mergeProviderConfig(persisted.providerConfig)
+  );
+
+  const updateProviderConfig = useCallback((p: ProviderName, cfg: Partial<ProviderConfig>) => {
+    setProviderConfig((prev) => ({ ...prev, [p]: { ...prev[p], ...cfg } }));
+  }, []);
 
   // Refs para acesso ao estado atual dentro de callbacks
   const messagesRef = useRef(messages);
@@ -228,10 +263,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      persistState({ messages, channels, tasks, dataCache, reports });
+      persistState({ messages, channels, tasks, dataCache, reports, activeProvider, providerConfig });
     }, 500);
     return () => { if (persistTimer.current) clearTimeout(persistTimer.current); };
-  }, [messages, channels, tasks, dataCache, reports]);
+  }, [messages, channels, tasks, dataCache, reports, activeProvider, providerConfig]);
 
   const addMessage = useCallback((msg: Message) => {
     setMessages((prev) => [...prev, msg]);
@@ -308,10 +343,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             content: m.text,
           }));
 
+        const cfg = providerConfig[activeProvider];
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input, thinking: thinkingLevel, history: channelHistory }),
+          body: JSON.stringify({
+            input,
+            thinking: thinkingLevel,
+            history: channelHistory,
+            provider: activeProvider,
+            model: cfg.model,
+            apiKey: cfg.apiKey,
+          }),
         });
         if (response.ok) {
           const data = await response.json() as { text?: string; error?: string };
@@ -447,7 +490,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ChatContext.Provider value={{
       messages, channels, currentChannel, agents, tasks, dataCache, reports, notifications, activeAgentIndex,
-      externalAgentURL, pairingCode, thinkingLevel, isLoading,
+      externalAgentURL, pairingCode, thinkingLevel, isLoading, activeProvider, providerConfig,
       setCurrentChannel,
       addChannel: (ch) => setChannels((prev) => [...prev, ch]),
       addMessage,
@@ -456,6 +499,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       updateAgent: (i, ag) => setAgents((prev) => { const next = [...prev]; next[i] = ag; return next; }),
       setActiveAgentIndex,
       setThinkingLevel,
+      setActiveProvider,
+      updateProviderConfig,
       setExternalAgentURL,
       setPairingCode,
       connectExternalAgent,

@@ -1,4 +1,7 @@
-// Adaptadores LLM unificados (Ollama, OpenAI, Anthropic, Gemini, OpenRouter)
+// Adaptadores LLM para o servidor Express (apps/lite).
+// Espelha a interface de @mch/provider-adapters — quando o workspace
+// estiver com pnpm install completo, este arquivo pode ser substituído
+// por um import direto do pacote.
 
 export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter';
 

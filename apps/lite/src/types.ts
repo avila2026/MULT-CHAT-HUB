@@ -1,3 +1,10 @@
+export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter';
+
+export interface ProviderConfig {
+  model: string;
+  apiKey: string;
+}
+
 export interface Tool {
   name: string;
   description: string;
