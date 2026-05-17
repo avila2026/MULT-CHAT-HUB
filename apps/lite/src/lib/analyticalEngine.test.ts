@@ -57,6 +57,11 @@ run('anomalias — anomaly_samples e peak_column', () => {
   const res = r.analysis_result as Record<string, unknown>;
   assert(typeof res['anomalies_found'] === 'number' && Array.isArray(res['anomaly_samples']),
     'resultado contém anomalies_found e anomaly_samples');
+  const samples = res['anomaly_samples'] as Array<Record<string, unknown>>;
+  if (samples.length > 0) {
+    assert(typeof samples[0]['peak_column'] === 'string', 'primeira amostra tem peak_column');
+    assert(typeof samples[0]['max_z'] === 'number', 'primeira amostra tem max_z');
+  }
 });
 
 // 4. Otimização linear — solução conhecida (min 2x+3y s.t. x+y>=10, x+2y>=15)
@@ -69,6 +74,26 @@ run('otimizacao — min 2x+3y → feasible, custo=25', () => {
   assert(Math.abs(vals['x'] - 5) < 0.01, 'x ≈ 5');
   assert(Math.abs(vals['y'] - 5) < 0.01, 'y ≈ 5');
   assert(Math.abs((res['objective_value'] as number) - 25) < 0.01, 'custo ≈ 25');
+});
+
+// 4b. Otimização linear com modelo customizado
+run('otimizacao custom — max lucro', () => {
+  const r = executeAnalysis({
+    analysisType: 'otimizacao',
+    optimizationModel: {
+      optimize: 'lucro',
+      opType: 'max',
+      constraints: { horas: { max: 8 }, material: { max: 10 } },
+      variables: {
+        prodA: { lucro: 5, horas: 2, material: 3 },
+        prodB: { lucro: 4, horas: 1, material: 2 },
+      },
+    },
+  });
+  assert(r.analysis_type === 'otimizacao', 'analysis_type correto');
+  const res = r.analysis_result as Record<string, unknown>;
+  assert(res['success'] === true, 'otimização custom feasible');
+  assert(typeof res['optimal_values'] === 'object', 'optimal_values presente');
 });
 
 // 5. Recomendação de stack
