@@ -2,7 +2,6 @@ import { useContext, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { ChatContext } from '../context/ChatContext';
 import { Button } from './ui/Button';
-import { PROVIDER_LABELS, NEEDS_API_KEY, PROVIDER_ORDER } from '../lib/providerAdapters';
 
 export default function AgentConfig() {
   const ctx = useContext(ChatContext);
@@ -17,10 +16,6 @@ export default function AgentConfig() {
     pairingCode,
     setPairingCode,
     connectExternalAgent,
-    activeProvider,
-    setActiveProvider,
-    providerConfig,
-    updateProviderConfig,
   } = ctx;
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -29,8 +24,6 @@ export default function AgentConfig() {
       a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.specialty.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-
-  const cfg = providerConfig[activeProvider];
 
   return (
     <div className="flex-1 flex flex-col gap-6 p-4 overflow-y-auto">
@@ -93,77 +86,6 @@ export default function AgentConfig() {
         </ul>
       </section>
 
-      {/* ── Provedor LLM ─────────────────────────────────────────────────── */}
-      <section className="pt-4 border-t border-zinc-200 dark:border-zinc-800" aria-labelledby="provider-heading">
-        <h2 id="provider-heading" className="font-semibold mb-3 text-zinc-800 dark:text-zinc-200 text-sm">Provedor LLM</h2>
-        <div className="space-y-3 bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700">
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Selecionar provedor LLM">
-            {PROVIDER_ORDER.map((p) => (
-              <Button
-                key={p}
-                variant={activeProvider === p ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveProvider(p)}
-                aria-pressed={activeProvider === p}
-              >
-                {PROVIDER_LABELS[p]}
-              </Button>
-            ))}
-          </div>
-
-          <div>
-            <label
-              htmlFor="provider-model"
-              className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase"
-            >
-              Modelo
-            </label>
-            <input
-              id="provider-model"
-              type="text"
-              value={cfg.model}
-              onChange={(e) => updateProviderConfig(activeProvider, { model: e.target.value })}
-              className="w-full mt-1 h-10 px-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              placeholder="nome-do-modelo"
-              aria-label="Modelo do provedor LLM"
-            />
-          </div>
-
-          {NEEDS_API_KEY[activeProvider] && (
-            <div>
-              <label
-                htmlFor="provider-apikey"
-                className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase"
-              >
-                API Key
-              </label>
-              <input
-                id="provider-apikey"
-                type="password"
-                value={cfg.apiKey}
-                onChange={(e) => updateProviderConfig(activeProvider, { apiKey: e.target.value })}
-                className="w-full mt-1 h-10 px-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                placeholder="sk-••••••••"
-                autoComplete="off"
-                aria-label={`Chave de API para ${PROVIDER_LABELS[activeProvider]}`}
-              />
-              {!cfg.apiKey && (
-                <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-                  Chave necessária para usar {PROVIDER_LABELS[activeProvider]}.
-                </p>
-              )}
-            </div>
-          )}
-
-          {activeProvider === 'ollama' && (
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-              Ollama não requer chave. Certifique-se de que <span className="font-mono">ollama serve</span> está rodando.
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* ── Gateway Externo ───────────────────────────────────────────────── */}
       <section className="pt-4 border-t border-zinc-200 dark:border-zinc-800" aria-labelledby="gateway-heading">
         <h2 id="gateway-heading" className="font-semibold mb-3 text-zinc-800 dark:text-zinc-200 text-sm">Conectar Gateway Externo</h2>
         <div className="space-y-3 bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700">

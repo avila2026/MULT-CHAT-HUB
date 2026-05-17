@@ -3,6 +3,7 @@ node_modules/
 **/dist/
 **/server-dist/
 **/coverage/
+**/*.tsbuildinfo
 **/.next/
 **/.turbo/
 .DS_Store

@@ -135,14 +135,98 @@ export const availableTools = [
     parameters: {}
   },
   {
-    name: 'webhook_call',
-    description: 'Envia um POST JSON para uma URL de webhook externo. Parâmetros: { "url": "string", "payload": object, "headers": object (opcional) }',
-    parameters: { url: 'string', payload: 'object', headers: 'object' }
+    name: 'scan_text_threats',
+    description: 'Analisa texto em busca de padrões de ameaça: SQL injection, XSS, path traversal, command injection, LDAP injection. Parâmetros: { "text": "string" }',
+    parameters: { text: 'string' }
+  },
+  {
+    name: 'analyze_code_security',
+    description: 'Audita trecho de código por vulnerabilidades: segredos hardcoded, uso de eval/Function, prototype pollution, deserialização insegura. Parâmetros: { "code": "string", "language": "string" }',
+    parameters: { code: 'string', language: 'string' }
+  },
+  {
+    name: 'generate_security_report',
+    description: 'Consolida achados de segurança em relatório estruturado com severity, cve_ref e recomendação. Parâmetros: { "findings": "string" }',
+    parameters: { findings: 'string' }
   }
 ];
 
 // Dicionário simples em memória RAM (volátil com o servidor backend)
 const memoryStore: Record<string, string> = {};
+
+// --- Ferramentas de cibersegurança (análise local, sem chamada externa) ---
+
+interface ThreatFinding {
+  type: string;
+  pattern: string;
+  severity: 'CRÍTICO' | 'ALTO' | 'MÉDIO' | 'BAIXO';
+  description: string;
+}
+
+const THREAT_PATTERNS: Array<{ type: string; re: RegExp; severity: ThreatFinding['severity']; description: string }> = [
+  { type: 'SQL Injection', re: /('|"|;|--|\/\*|\*\/|xp_|UNION\s+SELECT|DROP\s+TABLE|INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+\w+\s+SET)/i, severity: 'CRÍTICO', description: 'Padrão de injeção SQL detectado' },
+  { type: 'XSS', re: /<script[\s\S]*?>|javascript:|on\w+\s*=|<img[^>]+src\s*=\s*["']?javascript/i, severity: 'CRÍTICO', description: 'Padrão de Cross-Site Scripting detectado' },
+  { type: 'Path Traversal', re: /(\.\.[/\\]){2,}|%2e%2e[%2f%5c]/i, severity: 'ALTO', description: 'Tentativa de path traversal detectada' },
+  { type: 'Command Injection', re: /[;&|`$]\s*(rm|wget|curl|bash|sh|nc|ncat|python|perl|ruby|php)\b/i, severity: 'CRÍTICO', description: 'Padrão de injeção de comando detectado' },
+  { type: 'LDAP Injection', re: /[)(|&!*\\]/i, severity: 'MÉDIO', description: 'Possível injeção LDAP com caracteres especiais' },
+  { type: 'NoSQL Injection', re: /\$where|\$ne|\$gt|\$regex|\$or|\$and/i, severity: 'ALTO', description: 'Padrão de injeção NoSQL detectado' },
+  { type: 'Template Injection', re: /\{\{.*?\}\}|\{%.*?%\}|\$\{.*?\}/i, severity: 'ALTO', description: 'Possível injeção de template detectada' },
+];
+
+function scanTextThreats(text: string): string {
+  const findings: ThreatFinding[] = [];
+  for (const { type, re, severity, description } of THREAT_PATTERNS) {
+    const match = text.match(re);
+    if (match) {
+      findings.push({ type, pattern: match[0].slice(0, 40), severity, description });
+    }
+  }
+  if (findings.length === 0) {
+    return JSON.stringify({ status: 'LIMPO', message: 'Nenhuma ameaça detectada no texto analisado.', findings: [] }, null, 2);
+  }
+  return JSON.stringify({ status: 'AMEAÇAS DETECTADAS', total: findings.length, findings }, null, 2);
+}
+
+const CODE_VULN_PATTERNS: Array<{ type: string; re: RegExp; severity: ThreatFinding['severity']; cve_ref: string; description: string }> = [
+  { type: 'Eval Inseguro', re: /\beval\s*\(|\bnew\s+Function\s*\(/, severity: 'CRÍTICO', cve_ref: 'CWE-95', description: 'eval() ou new Function() permite execução arbitrária de código' },
+  { type: 'Segredo Hardcoded', re: /(password|secret|api_?key|token|pwd)\s*[:=]\s*["'][^"']{4,}/i, severity: 'CRÍTICO', cve_ref: 'CWE-798', description: 'Credencial em texto plano no código' },
+  { type: 'Prototype Pollution', re: /__proto__|constructor\s*\[|prototype\s*\[/, severity: 'ALTO', cve_ref: 'CWE-1321', description: 'Possível prototype pollution via acesso a __proto__ ou constructor' },
+  { type: 'Deserialização Insegura', re: /JSON\.parse\s*\([^)]*req\.|unserialize\(|pickle\.loads/, severity: 'ALTO', cve_ref: 'CWE-502', description: 'Deserialização de dados não confiáveis' },
+  { type: 'SQL Concatenado', re: /["']\s*\+\s*(req\.|params\.|query\.|body\.)/, severity: 'CRÍTICO', cve_ref: 'CWE-89', description: 'Construção de query SQL por concatenação com input do usuário' },
+  { type: 'innerHTML Inseguro', re: /\.innerHTML\s*=|\.outerHTML\s*=|document\.write\s*\(/, severity: 'ALTO', cve_ref: 'CWE-79', description: 'Escrita direta em innerHTML pode causar XSS' },
+  { type: 'Random Inseguro', re: /Math\.random\(\)/, severity: 'MÉDIO', cve_ref: 'CWE-338', description: 'Math.random() não é criptograficamente seguro para tokens/senhas' },
+];
+
+function analyzeCodeSecurity(code: string, language: string): string {
+  const findings = CODE_VULN_PATTERNS
+    .filter(({ re }) => re.test(code))
+    .map(({ type, severity, cve_ref, description }) => ({ type, severity, cve_ref, description }));
+
+  if (findings.length === 0) {
+    return JSON.stringify({ status: 'SEM VULNERABILIDADES DETECTADAS', language, findings: [] }, null, 2);
+  }
+  return JSON.stringify({ status: 'VULNERABILIDADES ENCONTRADAS', language, total: findings.length, findings }, null, 2);
+}
+
+function generateSecurityReport(findings: string): string {
+  const timestamp = new Date().toLocaleString('pt-BR');
+  const lines = findings.split('\n').filter(Boolean);
+  const report = {
+    titulo: 'Relatório de Segurança — MULT-CHAT-HUB',
+    gerado_em: timestamp,
+    total_achados: lines.length,
+    resumo_executivo: `${lines.length} achado(s) de segurança identificado(s) na análise. Revisão imediata recomendada para itens com severity CRÍTICO ou ALTO.`,
+    achados: lines.map((l, i) => ({ id: i + 1, descricao: l })),
+    recomendacoes_gerais: [
+      'Aplicar princípio do menor privilégio em todas as operações',
+      'Validar e sanitizar todos os inputs nas fronteiras do sistema',
+      'Utilizar prepared statements para queries SQL',
+      'Manter dependências atualizadas (OWASP Dependency-Check)',
+      'Habilitar Content-Security-Policy no servidor HTTP',
+    ]
+  };
+  return JSON.stringify(report, null, 2);
+}
 
 const ANALYSIS_TOOL_MAP: Record<string, AnalysisType> = {
   analyze_descriptive: 'descritiva',
@@ -223,29 +307,16 @@ export const handleToolExecution = async (req: Request, res: Response) => {
       }
     }
 
-    if (toolName === 'webhook_call') {
-      try {
-        const url = new URL(args.url);
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          ...(typeof args.headers === 'object' && args.headers !== null ? args.headers : {})
-        };
-        const response = await fetch(url.toString(), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(args.payload || {})
-        });
-        const bodyText = await response.text();
-        let bodyJson;
-        try { bodyJson = JSON.parse(bodyText); } catch { /* ignore parse error */ }
-        return res.json({
-          result: `Webhook ${url.toString()} retornou ${response.status}.`,
-          responseStatus: response.status,
-          responseBody: bodyJson !== undefined ? bodyJson : bodyText
-        });
-      } catch (err: any) {
-        return res.status(400).json({ error: `Falha ao chamar webhook: ${err.message}` });
-      }
+    if (toolName === 'scan_text_threats') {
+      return res.json({ result: scanTextThreats(String(args.text ?? '')) });
+    }
+
+    if (toolName === 'analyze_code_security') {
+      return res.json({ result: analyzeCodeSecurity(String(args.code ?? ''), String(args.language ?? 'unknown')) });
+    }
+
+    if (toolName === 'generate_security_report') {
+      return res.json({ result: generateSecurityReport(String(args.findings ?? '')) });
     }
 
     return res.status(404).json({ error: 'Ferramenta não encontrada ou não habilitada no backend.' });

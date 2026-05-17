@@ -65,6 +65,7 @@ function resolveProvider(raw: unknown): ProviderName {
   return valid.includes(raw as ProviderName) ? (raw as ProviderName) : 'ollama';
 }
 
+// ── Non-streaming handler (multi-provider) ────────────────────────────────────
 export const handleChat = async (req: Request, res: Response) => {
   const reqId = (req as Request & { id?: string }).id ?? crypto.randomUUID().slice(0, 8);
   const t0 = Date.now();
@@ -97,7 +98,6 @@ export const handleChat = async (req: Request, res: Response) => {
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: String(m.content),
       }));
-    // Anthropic/Gemini require first non-system message to be 'user'
     const firstUser = rawHistory.findIndex((m) => m.role === 'user');
     const historyMessages: HistoryMessage[] = firstUser >= 0 ? rawHistory.slice(firstUser) : [];
 
@@ -109,13 +109,13 @@ export const handleChat = async (req: Request, res: Response) => {
 
     slog('INFO', reqId, 'chat_request', { provider, model, thinking, historyTurns: historyMessages.length });
 
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutController = new AbortController();
+    const timeoutHandle = setTimeout(() => timeoutController.abort(), timeoutMs);
 
     let responseText: string;
     try {
       const adapter = createAdapter(provider);
-      responseText = await adapter.chat({ messages, model, maxTokens, apiKey, baseUrl, signal: controller.signal });
+      responseText = await adapter.chat({ messages, model, maxTokens, apiKey, baseUrl, signal: timeoutController.signal });
     } catch (err: unknown) {
       clearTimeout(timeoutHandle);
       const isTimeout = err instanceof Error && err.name === 'AbortError';
@@ -142,5 +142,155 @@ export const handleChat = async (req: Request, res: Response) => {
     const msg = error instanceof Error ? error.message : 'Internal Server Error';
     slog('ERROR', reqId, 'chat_unhandled_error', { error: msg, durationMs: Date.now() - t0 });
     return res.status(500).json({ error: msg });
+  }
+};
+
+// ── SSE streaming handler (Ollama only) ───────────────────────────────────────
+// Endpoint: POST /api/chat/stream
+// Emits SSE events:
+//   data: {"token":"..."}\n\n   — text fragment
+//   data: {"done":true}\n\n     — stream end (full text in .text)
+//   data: {"error":"..."}\n\n   — error
+export const handleChatStream = async (req: Request, res: Response) => {
+  const reqId = (req as Request & { id?: string }).id ?? crypto.randomUUID().slice(0, 8);
+  const t0 = Date.now();
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const send = (payload: object) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+
+  try {
+    const { input, model = OLLAMA_MODEL, thinking = 'HIGH', history = [] } = req.body;
+
+    if (!input) {
+      send({ error: 'Input is required' });
+      return res.end();
+    }
+
+    const numPredict = thinking === 'HIGH' ? 2048 : 512;
+
+    const historyMessages: HistoryMessage[] = (Array.isArray(history) ? history : [])
+      .slice(-10)
+      .map((m: { role: string; content: string }) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: String(m.content),
+      }));
+
+    const messages = [
+      { role: 'system', content: SYSTEM_INSTRUCTION },
+      ...historyMessages,
+      { role: 'user', content: input },
+    ];
+
+    slog('INFO', reqId, 'ollama_stream_request', { model, thinking, historyTurns: historyMessages.length });
+
+    // Separate controllers: one for timeout, aborted when client disconnects too
+    let clientGone = false;
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+    req.on('close', () => {
+      clientGone = true;
+      controller.abort();
+      clearTimeout(timeoutHandle);
+    });
+
+    let ollamaResponse: globalThis.Response;
+    try {
+      ollamaResponse = await fetch(`${OLLAMA_HOST}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages, stream: true, options: { num_predict: numPredict } }),
+        signal: controller.signal,
+      });
+    } catch (err: unknown) {
+      clearTimeout(timeoutHandle);
+      if (clientGone) return res.end();
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      const errMsg = isTimeout
+        ? `Ollama não respondeu em ${OLLAMA_TIMEOUT_MS / 1000}s. Verifique se o modelo está carregado.`
+        : `Ollama não acessível em ${OLLAMA_HOST}. Inicie com 'ollama serve'.`;
+      slog('WARN', reqId, 'ollama_stream_unreachable', { isTimeout, durationMs: Date.now() - t0 });
+      send({ error: errMsg });
+      return res.end();
+    }
+
+    if (!ollamaResponse.ok) {
+      clearTimeout(timeoutHandle);
+      const text = await ollamaResponse.text();
+      send({ error: `Ollama respondeu ${ollamaResponse.status}: ${text}` });
+      return res.end();
+    }
+
+    if (!ollamaResponse.body) {
+      clearTimeout(timeoutHandle);
+      send({ error: 'Sem corpo de resposta do Ollama.' });
+      return res.end();
+    }
+
+    const decoder = new TextDecoder();
+    const tokens: string[] = [];
+    let ndjsonBuffer = '';
+
+    try {
+      for await (const chunk of ollamaResponse.body as unknown as AsyncIterable<Uint8Array>) {
+        ndjsonBuffer += decoder.decode(chunk, { stream: true });
+        const lines = ndjsonBuffer.split('\n');
+        ndjsonBuffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const parsed = JSON.parse(trimmed) as { message?: { content?: string }; done?: boolean };
+            const token = parsed.message?.content ?? '';
+            if (token) {
+              tokens.push(token);
+              send({ token });
+            }
+            if (parsed.done) {
+              // Flush decoder and process any remaining buffer bytes
+              ndjsonBuffer += decoder.decode();
+              clearTimeout(timeoutHandle);
+              const fullText = tokens.join('');
+              send({ done: true, text: fullText });
+              slog('INFO', reqId, 'ollama_stream_ok', { durationMs: Date.now() - t0, tokens: tokens.length, chars: fullText.length });
+              return res.end();
+            }
+          } catch { /* malformed NDJSON line — skip */ }
+        }
+      }
+      // Flush any remaining bytes from decoder after loop
+      ndjsonBuffer += decoder.decode();
+    } catch (streamErr: unknown) {
+      if (clientGone) {
+        slog('INFO', reqId, 'ollama_stream_client_disconnect', { durationMs: Date.now() - t0 });
+        return res.end();
+      }
+      const isAbort = streamErr instanceof Error && streamErr.name === 'AbortError';
+      if (isAbort) {
+        slog('WARN', reqId, 'ollama_stream_timeout', { durationMs: Date.now() - t0 });
+        send({ error: 'Tempo limite excedido (90s). O modelo demorou demais para responder. Tente novamente.' });
+        return res.end();
+      }
+      slog('WARN', reqId, 'ollama_stream_error', { error: String(streamErr) });
+      send({ error: `Erro no stream do Ollama: ${String(streamErr)}` });
+      return res.end();
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
+
+    // Fallback if stream ended without a done event
+    const fullText = tokens.join('');
+    send({ done: true, text: fullText || 'Sem resposta do modelo.' });
+    res.end();
+
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Internal Server Error';
+    slog('ERROR', reqId, 'stream_unhandled_error', { error: msg, durationMs: Date.now() - t0 });
+    send({ error: msg });
+    res.end();
   }
 };

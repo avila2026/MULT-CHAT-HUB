@@ -24,7 +24,7 @@ export default function ChatArea() {
   }, [channelMessages.length]);
 
   if (!ctx) return null;
-  const { sendMessage, thinkingLevel, setThinkingLevel, transcribeAudio, uploadDataset, isLoading } = ctx;
+  const { sendMessage, thinkingLevel, setThinkingLevel, transcribeAudio, uploadDataset, isLoading, streamingId } = ctx;
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
@@ -90,9 +90,14 @@ export default function ChatArea() {
                   }`}
                 >
                   {msg.sender !== 'User' && msg.sender !== 'Sistema' && <Bot className="w-3 h-3" aria-hidden="true" />}
-                  {msg.sender}
+                  {msg.sender === 'User' ? 'Você' : msg.sender}
                 </span>
-                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                <p className="whitespace-pre-wrap break-words">
+                  {msg.text}
+                  {streamingId === msg.id && (
+                    <span className="inline-block w-0.5 h-4 bg-current ml-0.5 align-text-bottom animate-pulse" aria-hidden="true" />
+                  )}
+                </p>
                 {msg.analysis && (
                   <Suspense fallback={<div className="mt-2 text-xs text-zinc-500 italic">Carregando gráfico…</div>}>
                     <AnalysisChart result={msg.analysis} />
@@ -102,7 +107,7 @@ export default function ChatArea() {
             </motion.div>
           ))
         )}
-        {isLoading && (
+        {isLoading && !streamingId && (
           <div className="flex justify-start">
             <div className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm italic text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-2" aria-live="polite">
               <span className="sr-only">Aguardando resposta</span>

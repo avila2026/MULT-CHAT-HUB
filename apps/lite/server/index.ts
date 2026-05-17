@@ -6,19 +6,6 @@ import apiRoutes from './routes/api.js';
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-// ── Activation guard ──────────────────────────────────────────────────────────
-// Server refuses to start if APP_ACTIVATION_SECRET is not set.
-// Store the real value in apps/lite/.env.local (gitignored — never commit it).
-if (!process.env.APP_ACTIVATION_SECRET) {
-  console.error(JSON.stringify({
-    ts: new Date().toISOString(),
-    level: 'ERROR',
-    msg: 'server_activation_failed',
-    detail: 'APP_ACTIVATION_SECRET não configurada. Crie apps/lite/.env.local com o valor correto.',
-  }));
-  process.exit(1);
-}
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';

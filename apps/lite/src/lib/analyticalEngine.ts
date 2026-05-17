@@ -77,6 +77,9 @@ function quantile(sorted: number[], q: number): number {
 }
 
 function descriptive(cols: ColumnarData): Record<string, unknown> {
+  if (rowCount(cols) === 0) {
+    throw new Error('Erro_Dimensionalidade: Dataset vazio, impossivel calcular estatísticas descritivas.');
+  }
   const summary: Record<string, Record<string, number>> = {};
   for (const col of numericColumns(cols)) {
     const arr = cols[col];
