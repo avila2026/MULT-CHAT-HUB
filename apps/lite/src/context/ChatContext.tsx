@@ -18,12 +18,14 @@ interface ChatContextType {
   pairingCode: string;
   thinkingLevel: 'LOW' | 'HIGH';
   isLoading: boolean;
+  streamingId: string | null;
   activeProvider: ProviderName;
   providerConfig: Record<ProviderName, ProviderConfig>;
 
   setCurrentChannel: (ch: string) => void;
   addChannel: (ch: Channel) => void;
   addMessage: (msg: Message) => void;
+  updateMessageText: (id: string, text: string) => void;
   sendMessage: (text: string) => Promise<void>;
   registerAgent: (agent: Agent) => void;
   updateAgent: (index: number, agent: Agent) => void;
@@ -156,13 +158,27 @@ const DEFAULT_AGENTS: Agent[] = [
     ]
   },
   {
+    name: 'Agente de Cibersegurança',
+    specialty: 'Segurança Ofensiva e Defensiva',
+    description: 'Especialista em segurança via Claude API (Anthropic). Analisa vulnerabilidades, audita código, detecta ameaças e gera relatórios de conformidade OWASP/CWE.',
+    permissions: ['security_scan', 'code_audit'],
+    provider: 'Claude API',
+    status: 'Online',
+    thinkingLevel: 'HIGH' as const,
+    tools: [
+      { name: 'scan_text_threats', description: 'Detecta padrões de injeção e ameaças no texto', parameters: { text: 'string' } },
+      { name: 'analyze_code_security', description: 'Audita código por vulnerabilidades (CWE/OWASP)', parameters: { code: 'string', language: 'string' } },
+      { name: 'generate_security_report', description: 'Gera relatório de segurança estruturado', parameters: { findings: 'string' } }
+    ]
+  },
+  {
     name: 'NullClaw Gateway',
     specialty: 'Automação Local',
     description: 'Conecte seu motor NullClaw rodando localmente.',
     permissions: ['full_access'],
     provider: 'NullClaw Gateway',
     status: 'Offline',
-    thinkingLevel: 'HIGH',
+    thinkingLevel: 'HIGH' as const,
     tools: []
   },
   {
@@ -172,7 +188,7 @@ const DEFAULT_AGENTS: Agent[] = [
     permissions: ['tools', 'webhook'],
     provider: 'Webhook Externo',
     status: 'Offline',
-    thinkingLevel: 'HIGH',
+    thinkingLevel: 'HIGH' as const,
     tools: [{ name: 'webhook_call', description: 'POST para webhook configurado', parameters: { url: 'string', payload: 'object', headers: 'object' } }]
   }
 ];
@@ -222,6 +238,43 @@ function mergeProviderConfig(
   return result;
 }
 
+// SSE reader helper: returns the full accumulated text
+async function readSseStream(
+  response: globalThis.Response,
+  onToken: (token: string) => void
+): Promise<string> {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  const tokens: string[] = [];
+  let sseBuffer = '';
+  let done = false;
+
+  while (!done) {
+    const { value, done: readerDone } = await reader.read();
+    if (readerDone) break;
+    sseBuffer += decoder.decode(value, { stream: true });
+    const lines = sseBuffer.split('\n');
+    sseBuffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.replace(/^data:\s*/, '').trim();
+      if (!trimmed) continue;
+      try {
+        const evt = JSON.parse(trimmed) as { token?: string; done?: boolean; text?: string; error?: string };
+        if (evt.error) throw new Error(evt.error);
+        if (evt.token) { tokens.push(evt.token); onToken(evt.token); }
+        if (evt.done) { done = true; if (evt.text) return evt.text; break; }
+      } catch (e) {
+        // Re-throw error events, ignore malformed SSE lines
+        if (e instanceof Error && !line.startsWith('data:')) continue;
+        throw e;
+      }
+    }
+  }
+  // Flush remaining decoder bytes
+  sseBuffer += decoder.decode();
+  return tokens.join('');
+}
+
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const persisted = loadPersisted();
   const confirm = useConfirm();
@@ -239,6 +292,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [pairingCode, setPairingCode] = useState('');
   const [thinkingLevel, setThinkingLevel] = useState<'LOW' | 'HIGH'>('HIGH');
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<ProviderName>(
     () => (persisted.activeProvider ?? 'ollama')
   );
@@ -270,6 +324,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const addMessage = useCallback((msg: Message) => {
     setMessages((prev) => [...prev, msg]);
+  }, []);
+
+  const updateMessageText = useCallback((id: string, text: string) => {
+    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, text } : m));
   }, []);
 
   const sendMessage = async (input: string) => {
@@ -311,12 +369,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     addMessage({ id: newMsgId(), channel: currentChannel, sender: 'User', text: input });
     setIsLoading(true);
 
+    let streamPlaceholderId: string | null = null;
     try {
       let responseText = '';
       let senderName = 'Orquestrador Hub';
+      const activeAgent = activeAgentIndex !== null ? agents[activeAgentIndex] : null;
 
-      if (activeAgentIndex !== null && agents[activeAgentIndex].provider === 'NullClaw Gateway') {
-        senderName = agents[activeAgentIndex].name;
+      if (activeAgent?.provider === 'NullClaw Gateway') {
+        senderName = activeAgent.name;
         const response = await fetch(`${externalAgentURL}/webhook`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${pairingCode}` },
@@ -328,20 +388,107 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         } else {
           responseText = `Erro no Gateway (${response.status}).`;
         }
-      } else if (activeAgentIndex !== null && agents[activeAgentIndex].provider === 'Webhook Externo') {
-        senderName = agents[activeAgentIndex].name;
-        responseText = 'Aguardando configuração de URL de webhook. Defina a URL no campo "Conectar Gateway Externo" (URL) e envie /use_tool webhook_call para testar.';
-      } else {
-        senderName = activeAgentIndex !== null ? agents[activeAgentIndex].name : 'Orquestrador Hub';
+        addMessage({ id: newMsgId(), channel: currentChannel, sender: senderName, text: responseText });
 
-        // Histórico do canal ativo: últimas 20 mensagens User/AI (sem Sistema)
+      } else if (activeAgent?.provider === 'Webhook Externo') {
+        senderName = activeAgent.name;
+        responseText = 'Aguardando configuração de URL de webhook. Defina a URL no campo "Conectar Gateway Externo" (URL) e envie /use_tool webhook_call para testar.';
+        addMessage({ id: newMsgId(), channel: currentChannel, sender: senderName, text: responseText });
+
+      } else if (activeAgent?.provider === 'Claude API') {
+        // SSE streaming via Agente de Cibersegurança (Claude API)
+        senderName = activeAgent.name;
+
         const channelHistory = messagesRef.current
           .filter((m) => m.channel === currentChannel && m.sender !== 'Sistema')
           .slice(-20)
-          .map((m) => ({
-            role: m.sender === 'User' ? 'user' : 'assistant',
-            content: m.text,
-          }));
+          .map((m) => ({ role: m.sender === 'User' ? 'user' : 'assistant', content: m.text }));
+
+        const streamMsgId = newMsgId();
+        streamPlaceholderId = streamMsgId;
+        addMessage({ id: streamMsgId, channel: currentChannel, sender: senderName, text: '' });
+        setStreamingId(streamMsgId);
+
+        try {
+          const response = await fetch('/api/chat/claude-security', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input, history: channelHistory }),
+          });
+
+          if (!response.ok || !response.body) {
+            const errData = await response.json().catch(() => ({} as { error?: string })) as { error?: string };
+            responseText = errData.error ?? 'Erro ao conectar à Claude API. Verifique ANTHROPIC_API_KEY no backend.';
+            updateMessageText(streamMsgId, responseText);
+          } else {
+            try {
+              const claudeTokens: string[] = [];
+              responseText = await readSseStream(response, (token) => {
+                claudeTokens.push(token);
+                updateMessageText(streamMsgId, claudeTokens.join(''));
+              });
+              updateMessageText(streamMsgId, responseText);
+            } catch (sseErr: unknown) {
+              responseText = sseErr instanceof Error ? sseErr.message : 'Erro no stream do Agente de Cibersegurança.';
+              updateMessageText(streamMsgId, responseText);
+            }
+          }
+        } finally {
+          setStreamingId(null);
+        }
+
+      } else if (activeProvider === 'ollama') {
+        // SSE streaming via Ollama
+        senderName = activeAgent?.name ?? 'Orquestrador Hub';
+
+        const channelHistory = messagesRef.current
+          .filter((m) => m.channel === currentChannel && m.sender !== 'Sistema')
+          .slice(-20)
+          .map((m) => ({ role: m.sender === 'User' ? 'user' : 'assistant', content: m.text }));
+
+        const cfg = providerConfig[activeProvider];
+        const streamMsgId = newMsgId();
+        streamPlaceholderId = streamMsgId;
+        addMessage({ id: streamMsgId, channel: currentChannel, sender: senderName, text: '' });
+        setStreamingId(streamMsgId);
+
+        try {
+          const response = await fetch('/api/chat/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input, thinking: thinkingLevel, history: channelHistory, model: cfg.model }),
+          });
+
+          if (!response.ok || !response.body) {
+            const errData = await response.json().catch(() => ({} as { error?: string })) as { error?: string };
+            responseText = errData.error ?? 'Ollama offline. Inicie com `ollama serve`.';
+            updateMessageText(streamMsgId, responseText);
+          } else {
+            // Accumulate tokens in a local array to avoid O(n²) string growth
+            const accumulated: string[] = [];
+            try {
+              responseText = await readSseStream(response, (token) => {
+                accumulated.push(token);
+                updateMessageText(streamMsgId, accumulated.join(''));
+              });
+              updateMessageText(streamMsgId, responseText);
+            } catch (sseErr: unknown) {
+              responseText = sseErr instanceof Error ? sseErr.message : 'Erro no stream do Ollama.';
+              updateMessageText(streamMsgId, responseText);
+            }
+          }
+        } finally {
+          setStreamingId(null);
+        }
+
+      } else {
+        // Non-streaming multi-provider path (openai, anthropic, gemini, openrouter)
+        senderName = activeAgent?.name ?? 'Orquestrador Hub';
+
+        const channelHistory = messagesRef.current
+          .filter((m) => m.channel === currentChannel && m.sender !== 'Sistema')
+          .slice(-20)
+          .map((m) => ({ role: m.sender === 'User' ? 'user' : 'assistant', content: m.text }));
 
         const cfg = providerConfig[activeProvider];
         const response = await fetch('/api/chat', {
@@ -361,24 +508,30 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           responseText = data.text || data.error || 'Sem resposta.';
         } else {
           const data = await response.json().catch(() => ({} as { error?: string })) as { error?: string };
-          responseText = data.error?.includes('Ollama')
-            ? data.error
-            : 'Erro no servidor backend. Verifique se o Ollama está rodando com "ollama serve".';
+          responseText = data.error ?? `Erro ao chamar ${activeProvider}.`;
         }
+        addMessage({ id: newMsgId(), channel: currentChannel, sender: senderName, text: responseText });
       }
 
-      addMessage({ id: newMsgId(), channel: currentChannel, sender: senderName, text: responseText });
-      await processCommands(responseText, {
-        channel: currentChannel,
-        tasks: tasksRef.current,
-        dataCache: dataCacheRef.current,
-        addMessage,
-        setTasks,
-        setDataCache,
-        setReports,
-      });
+      // processCommands runs for all paths
+      if (responseText) {
+        await processCommands(responseText, {
+          channel: currentChannel,
+          tasks: tasksRef.current,
+          dataCache: dataCacheRef.current,
+          addMessage,
+          setTasks,
+          setDataCache,
+          setReports,
+        });
+      }
     } catch {
-      addMessage({ id: newMsgId(), channel: currentChannel, sender: 'Sistema', text: 'Falha de comunicação. Verifique se o backend está rodando.' });
+      const errMsg = 'Falha de comunicação. Verifique se o backend está rodando.';
+      if (streamPlaceholderId) {
+        updateMessageText(streamPlaceholderId, errMsg);
+      } else {
+        addMessage({ id: newMsgId(), channel: currentChannel, sender: 'Sistema', text: errMsg });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -490,10 +643,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ChatContext.Provider value={{
       messages, channels, currentChannel, agents, tasks, dataCache, reports, notifications, activeAgentIndex,
-      externalAgentURL, pairingCode, thinkingLevel, isLoading, activeProvider, providerConfig,
+      externalAgentURL, pairingCode, thinkingLevel, isLoading, streamingId, activeProvider, providerConfig,
       setCurrentChannel,
       addChannel: (ch) => setChannels((prev) => [...prev, ch]),
       addMessage,
+      updateMessageText,
       sendMessage,
       registerAgent: (ag) => setAgents((prev) => [...prev, ag]),
       updateAgent: (i, ag) => setAgents((prev) => { const next = [...prev]; next[i] = ag; return next; }),

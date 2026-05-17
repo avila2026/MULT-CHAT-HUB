@@ -26,14 +26,6 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "server-dist/**", "release/**"]
     },
-    "build:frontend": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "build:electron": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "server-dist/**", "release/**"]
-    },
     "build:cloud": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**"]

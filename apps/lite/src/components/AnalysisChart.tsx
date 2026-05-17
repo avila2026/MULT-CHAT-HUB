@@ -62,12 +62,8 @@ function PredictiveChart({ result }: Props) {
   return (
     <div className="mt-3 bg-white border border-zinc-200 rounded-lg p-3">
       <p className="text-xs font-semibold text-zinc-600 mb-1">Regressão linear · intercept = {ar.intercept}</p>
-      <p className="text-[11px] text-zinc-500 mb-1">
-        Coeficientes: {Object.entries(ar.coefficients || {}).map(([k, v]) => `${k}=${v}`).join(', ') || '—'}
-      </p>
       <p className="text-[11px] text-zinc-500 mb-2">
-        R² = <span className="font-mono">{ar.r2 ?? '—'}</span>
-        {' · '}RMSE = <span className="font-mono">{ar.rmse ?? '—'}</span>
+        Coeficientes: {Object.entries(ar.coefficients || {}).map(([k, v]) => `${k}=${v}`).join(', ') || '—'}
       </p>
       {data.length > 0 && (
         <ResponsiveContainer width="100%" height={200}>
@@ -87,7 +83,7 @@ function PredictiveChart({ result }: Props) {
 function AnomaliesChart({ result }: Props) {
   const ar = result.analysis_result as Record<string, any>;
   const samples: Array<Record<string, any>> = ar.anomaly_samples || [];
-  const data = samples.map((s) => ({ idx: s.row_index, z: s.max_z, peak_column: s.peak_column ?? '' }));
+  const data = samples.map((s) => ({ idx: s.row_index, z: s.max_z }));
   return (
     <div className="mt-3 bg-white border border-zinc-200 rounded-lg p-3">
       <p className="text-xs font-semibold text-zinc-600 mb-2">
@@ -100,20 +96,7 @@ function AnomaliesChart({ result }: Props) {
             <XAxis type="number" dataKey="idx" name="Linha" stroke="#52525b" fontSize={11} />
             <YAxis type="number" dataKey="z" name="|z| máx." stroke="#52525b" fontSize={11} />
             <ZAxis range={[60, 60]} />
-            <Tooltip
-              cursor={{ strokeDasharray: '3 3' }}
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const d = payload[0].payload as { idx: number; z: number; peak_column: string };
-                return (
-                  <div className="bg-white border border-zinc-200 rounded p-2 text-[11px] shadow">
-                    <p>Linha: <span className="font-mono">{d.idx}</span></p>
-                    <p>|z| máx.: <span className="font-mono">{d.z}</span></p>
-                    {d.peak_column && <p>Coluna pico: <span className="font-mono text-red-600">{d.peak_column}</span></p>}
-                  </div>
-                );
-              }}
-            />
+            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
             <Scatter data={data} fill="#ef4444" />
           </ScatterChart>
         </ResponsiveContainer>
@@ -126,7 +109,6 @@ function AnomaliesChart({ result }: Props) {
 
 function OptimizationCard({ result }: Props) {
   const ar = result.analysis_result as Record<string, any>;
-  const optimalEntries = ar.optimal_values ? Object.entries(ar.optimal_values as Record<string, number>) : [];
   return (
     <div className="mt-3 bg-white border border-zinc-200 rounded-lg p-3 text-xs">
       <p className="font-semibold text-zinc-700 mb-1">Problema: {ar.problem}</p>
@@ -135,11 +117,8 @@ function OptimizationCard({ result }: Props) {
       </p>
       {ar.success && (
         <>
-          <p>
-            <span className="text-zinc-500">Valores ótimos:</span>{' '}
-            {optimalEntries.map(([k, v]) => `${k}=${v}`).join(', ') || '—'}
-          </p>
-          <p><span className="text-zinc-500">Valor objetivo:</span> {ar.objective_value}</p>
+          <p><span className="text-zinc-500">Valores ótimos:</span> [{(ar.optimal_values || []).join(', ')}]</p>
+          <p><span className="text-zinc-500">Custo mínimo:</span> {ar.minimum_cost}</p>
         </>
       )}
     </div>
