@@ -13,3 +13,6 @@ node_modules/
 
 **/release/
 package-lock.json
+
+# Provenance data: runtime logs of tool executions (may contain sensitive args)
+apps/lite/data/

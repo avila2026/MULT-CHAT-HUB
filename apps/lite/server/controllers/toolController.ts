@@ -4,6 +4,10 @@ import { executeAnalysis, AnalysisType } from '../../src/lib/analyticalEngine.js
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Avaliador matemático seguro sem usar Function() ou eval().
 // Suporta: números, +, -, *, /, **, %, parênteses, operadores unários.
@@ -245,28 +249,70 @@ const MAX_ROWS = 20000; // limite preventivo para análises pesadas
 const PROVENANCE_DIR = path.resolve(__dirname, '..', '..', 'data');
 const PROVENANCE_FILE = path.join(PROVENANCE_DIR, 'provenance.jsonl');
 
-function ensureProvenanceDir() {
+export const SENSITIVE_PATTERNS = [
+  /token/i,
+  /password/i,
+  /secret/i,
+  /api_?key/i,
+  /auth/i,
+  /credential/i,
+  /private_?key/i,
+  /bearer/i,
+];
+
+export function maskSensitive(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') {
+    if (SENSITIVE_PATTERNS.some((re) => re.test(obj)) && obj.length > 8) {
+      return `${obj.slice(0, 4)}****${obj.slice(-4)}`;
+    }
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((v) => maskSensitive(v));
+  }
+  if (typeof obj === 'object') {
+    const masked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (SENSITIVE_PATTERNS.some((re) => re.test(key))) {
+        const v = value as string;
+        if (typeof v === 'string' && v.length > 4) {
+          masked[key] = `${v.slice(0, 2)}****${v.slice(-2)}`;
+        } else {
+          masked[key] = '****';
+        }
+      } else {
+        masked[key] = maskSensitive(value);
+      }
+    }
+    return masked;
+  }
+  return obj;
+}
+
+export function ensureProvenanceDir() {
   if (!fs.existsSync(PROVENANCE_DIR)) {
     fs.mkdirSync(PROVENANCE_DIR, { recursive: true });
   }
 }
 
-function hashObject(obj: unknown) {
+export function hashObject(obj: unknown) {
   const s = JSON.stringify(obj, Object.keys(obj as any).sort());
   return crypto.createHash('sha256').update(s).digest('hex');
 }
 
-function recordProvenance(entry: Record<string, unknown>) {
+export function recordProvenance(entry: Record<string, unknown>) {
   try {
     ensureProvenanceDir();
-    const line = JSON.stringify(entry) + '\n';
+    const clean = maskSensitive(entry) as Record<string, unknown>;
+    const line = JSON.stringify(clean) + '\n';
     fs.appendFileSync(PROVENANCE_FILE, line, { encoding: 'utf8' });
   } catch (err) {
     console.error('Falha ao gravar provenance:', err);
   }
 }
 
-function sizeOf(obj: unknown) {
+export function sizeOf(obj: unknown) {
   try {
     return Buffer.byteLength(JSON.stringify(obj), 'utf8');
   } catch {
@@ -274,7 +320,7 @@ function sizeOf(obj: unknown) {
   }
 }
 
-function validateArgsByMetadata(toolName: string, args: any): { ok: boolean; error?: string } {
+export function validateArgsByMetadata(toolName: string, args: any): { ok: boolean; error?: string } {
   const meta = availableTools.find((t) => t.name === toolName);
   if (!meta) return { ok: false, error: 'Ferramenta desconhecida.' };
   const expected = (meta as any).parameters ?? {};
