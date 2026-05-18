@@ -294,7 +294,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<ProviderName>(
-    () => (persisted.activeProvider ?? 'ollama')
+    () => (persisted.activeProvider ?? 'openai')
   );
   const [providerConfig, setProviderConfig] = useState<Record<ProviderName, ProviderConfig>>(
     () => mergeProviderConfig(persisted.providerConfig)

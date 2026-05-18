@@ -7,13 +7,17 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'fazendaavila2026/avila:latest'
 const OLLAMA_TIMEOUT_MS = 90_000;
 const CLOUD_TIMEOUT_MS = 60_000;
 
-const ENV_KEYS: Record<ProviderName, string> = {
-  ollama: '',
-  openai: process.env.OPENAI_API_KEY ?? '',
-  anthropic: process.env.ANTHROPIC_API_KEY ?? '',
-  gemini: process.env.GEMINI_API_KEY ?? '',
-  openrouter: process.env.OPENROUTER_API_KEY ?? '',
-};
+// Lazy lookup: dotenv.config() runs after this module is imported, so reading
+// process.env at module load returns undefined. Resolve per-request instead.
+function envKeyFor(provider: ProviderName): string {
+  switch (provider) {
+    case 'openai':     return process.env.OPENAI_API_KEY ?? '';
+    case 'anthropic':  return process.env.ANTHROPIC_API_KEY ?? '';
+    case 'gemini':     return process.env.GEMINI_API_KEY ?? '';
+    case 'openrouter': return process.env.OPENROUTER_API_KEY ?? '';
+    case 'ollama':     return '';
+  }
+}
 
 const SYSTEM_INSTRUCTION = [
   "Você é o Multi-AI Collaboration Hub, um sistema que orquestra múltiplas IAs em uma equipe colaborativa com agentes especializados.",
@@ -86,7 +90,7 @@ export const handleChat = async (req: Request, res: Response) => {
     const provider = resolveProvider(rawProvider);
     const defaultModel = provider === 'ollama' ? OLLAMA_MODEL : DEFAULT_MODELS[provider];
     const model = (typeof modelOverride === 'string' && modelOverride.trim()) ? modelOverride.trim() : defaultModel;
-    const apiKey = (typeof reqApiKey === 'string' && reqApiKey.trim()) ? reqApiKey.trim() : ENV_KEYS[provider];
+    const apiKey = (typeof reqApiKey === 'string' && reqApiKey.trim()) ? reqApiKey.trim() : envKeyFor(provider);
     const baseUrl = provider === 'ollama' ? OLLAMA_HOST : undefined;
     const timeoutMs = provider === 'ollama' ? OLLAMA_TIMEOUT_MS : CLOUD_TIMEOUT_MS;
     const maxTokens = thinking === 'HIGH' ? 2048 : 512;
