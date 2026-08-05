@@ -77,7 +77,7 @@ function quantile(sorted: number[], q: number): number {
 }
 
 function descriptive(cols: ColumnarData): Record<string, unknown> {
-  const summary: Record<string, Record<string, number>> = {};
+  const summary: Record<string, Record<string, number | null>> = {};
   for (const col of numericColumns(cols)) {
     const arr = cols[col];
     const n = arr.length;
@@ -97,7 +97,7 @@ function descriptive(cols: ColumnarData): Record<string, unknown> {
       p75: round(quantile(sorted, 0.75)),
       max,
       range: round(max - min),
-      cv: mean !== 0 ? round((std / Math.abs(mean)) * 100) : NaN,
+      cv: mean !== 0 ? round((std / Math.abs(mean)) * 100) : null,
     };
   }
   return {
@@ -149,7 +149,7 @@ function predictive(cols: ColumnarData, targetColumn: string | undefined): Recor
   const yMean = yFlat.reduce((a, b) => a + b, 0) / yFlat.length;
   const ssTot = yFlat.reduce((acc, v) => acc + (v - yMean) ** 2, 0);
   const ssRes = yFlat.reduce((acc, v, i) => acc + (v - allPredictions[i]) ** 2, 0);
-  const r2 = ssTot > 0 ? round(1 - ssRes / ssTot) : 1;
+  const r2 = ssTot > 0 ? round(1 - ssRes / ssTot) : null;
   const rmse = round(Math.sqrt(ssRes / yFlat.length));
 
   const samplePredictions = allPredictions.slice(0, 10).map(round);
@@ -219,10 +219,7 @@ const DEFAULT_LP_MODEL = {
 const DEFAULT_LP_DESCRIPTION = 'min 2x + 3y  s.t.  x+y>=10, x+2y>=15, x,y>=0';
 
 function optimization(userModel?: OptimizationModel): Record<string, unknown> {
-  const isCustom = !!userModel;
-  const lpModel = isCustom
-    ? { ...userModel, opType: userModel.opType }
-    : DEFAULT_LP_MODEL;
+  const lpModel = userModel || DEFAULT_LP_MODEL;
 
   const result = lpSolver.Solve(lpModel);
   const success = result.feasible === true;
@@ -235,7 +232,7 @@ function optimization(userModel?: OptimizationModel): Record<string, unknown> {
     }
   }
 
-  const problemDescription = isCustom
+  const problemDescription = userModel
     ? `${userModel.opType} ${userModel.optimize}  (${varNames.join(', ')} variáveis)`
     : DEFAULT_LP_DESCRIPTION;
 
