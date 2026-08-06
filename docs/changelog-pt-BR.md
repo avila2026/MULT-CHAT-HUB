@@ -6,7 +6,7 @@
 
 - Adicionado um chevron ao lado do botão de microfone do compositor que alterna entre ditado e modo de voz e mantém a sua escolha; clicar no microfone agora inicia o ditado imediatamente.
 - Adicionada retomada automática de sessões interrompidas quando o computador entra em suspensão. Um banner com um botão manual "Continuar" aparece apenas quando a retomada não é segura, e você pode continuar a sessão na nuvem.
-- Adicionadas captura e anotação da página exibida no painel do Navegador, incluindo sites externos, para que você possa marcar o que vê e anexar a imagem à conversa.
+- Adicionadas a captura e a anotação da página exibida no painel do Navegador, incluindo sites externos, para que você possa marcar o que vê e anexar a imagem à conversa.
 
 ### Corrigido
 
@@ -48,7 +48,7 @@
 
 ### Corrigido
 
-- Corrigidas sessões no Windows falharem a cada turno com um erro "Socket is closed" quando o tráfego passava por um proxy corporativo que inspeciona conexões criptografadas, por meio da atualização do CLI do Claude Code incluído para a versão 2.1.215. Respostas interrompidas agora são repetidas em uma nova conexão em vez de encerrar o turno.
+- Corrigidas sessões no Windows falharem a cada turno com um erro `Socket is closed` quando o tráfego passava por um proxy corporativo que inspeciona conexões criptografadas, por meio da atualização do CLI do Claude Code incluído para a versão 2.1.215. Respostas interrompidas agora são repetidas em uma nova conexão em vez de encerrar o turno.
 
 ## 16 de julho de 2026 — 1.22209.0
 
