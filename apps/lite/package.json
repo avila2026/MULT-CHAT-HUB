@@ -15,12 +15,13 @@
     "clean": "rm -rf dist server-dist release",
     "test:engine": "tsx src/lib/analyticalEngine.test.ts",
     "test:controller": "tsx server/controllers/toolController.test.ts",
-    "test": "pnpm run test:engine && pnpm run test:controller",
+    "test": "pnpm run test:engine && pnpm run test:controller && pnpm run test:api-auth",
     "lint": "tsc --noEmit",
     "server": "tsx server/index.ts",
     "dev:all": "concurrently \"pnpm run dev\" \"pnpm run server\"",
     "electron:dev": "cross-env NODE_ENV=development concurrently \"pnpm run dev:all\" \"wait-on tcp:3000 tcp:3001 && electron .\"",
-    "electron:build": "pnpm run build:electron && electron-builder"
+    "electron:build": "pnpm run build:electron && electron-builder",
+    "test:api-auth": "tsx server/routes/api.test.ts"
   },
   "build": {
     "appId": "com.multchathub.app",

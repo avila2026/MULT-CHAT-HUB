@@ -2,6 +2,7 @@ import { Dispatch, SetStateAction } from 'react';
 import { AnalysisResult, Task } from '../types';
 import { executeAnalysis, AnalysisType } from './analyticalEngine';
 import { extractBalancedJson, newMsgId } from './utils';
+import { getBackendAuthHeaders } from './backendAuth';
 
 export type AddMessageFn = (msg: { id: string; channel: string; sender: string; text: string; analysis?: AnalysisResult }) => void;
 
@@ -60,7 +61,7 @@ export async function processCommands(responseText: string, ctx: CommandContext)
         try {
           const res = await fetch('/api/tools/execute', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getBackendAuthHeaders() },
             body: JSON.stringify({ toolName, args }),
           });
           const data = await res.json();
@@ -73,7 +74,7 @@ export async function processCommands(responseText: string, ctx: CommandContext)
         } catch {
           addMessage({
             id: newMsgId(), channel, sender: 'Sistema',
-            text: `Ferramenta "${toolName}" exige o backend Express local. No deploy Vercel apenas as 5 tools de análise estão disponíveis. Rode "npm run dev:all" localmente para acesso completo.`,
+            text: `Ferramenta "${toolName}" exige o backend Express local. No deploy Vercel apenas as 5 tools de análise estão disponíveis. Rode "pnpm dev:all" localmente para acesso completo.`,
           });
         }
       } catch (err: unknown) {
