@@ -6,6 +6,17 @@ import apiRoutes from './routes/api.js';
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
+const activationSecret = process.env.APP_ACTIVATION_SECRET?.trim();
+if (!activationSecret) {
+  console.error(JSON.stringify({
+    ts: new Date().toISOString(),
+    level: 'ERROR',
+    msg: 'missing_app_activation_secret',
+    detail: 'APP_ACTIVATION_SECRET is required. Set it in apps/lite/.env.local before starting the backend.',
+  }));
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
@@ -58,6 +69,8 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api', apiRoutes);
 
 // ── Health (pinga Ollama ao vivo) ─────────────────────────────────────────────
+// Public endpoint: /health intentionally remains unauthenticated so local
+// process managers and readiness probes can verify backend/Ollama status.
 app.get('/health', async (_req: Request, res: Response) => {
   const t0 = Date.now();
   let ollamaStatus: 'ok' | 'error' = 'error';

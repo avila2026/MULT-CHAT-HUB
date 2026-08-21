@@ -3,6 +3,7 @@ import { Agent, Message, Channel, Task, AnalysisResult, ProviderName, ProviderCo
 import { useConfirm } from '../components/ui/ConfirmDialog';
 import { parseCsv, newMsgId } from '../lib/utils';
 import { processCommands } from '../lib/commandProcessor';
+import { getBackendAuthHeaders } from '../lib/backendAuth';
 
 interface ChatContextType {
   messages: Message[];
@@ -412,7 +413,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         try {
           const response = await fetch('/api/chat/claude-security', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getBackendAuthHeaders() },
             body: JSON.stringify({ input, history: channelHistory }),
           });
 
@@ -455,7 +456,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         try {
           const response = await fetch('/api/chat/stream', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getBackendAuthHeaders() },
             body: JSON.stringify({ input, thinking: thinkingLevel, history: channelHistory, model: cfg.model }),
           });
 
@@ -493,7 +494,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         const cfg = providerConfig[activeProvider];
         const response = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getBackendAuthHeaders() },
           body: JSON.stringify({
             input,
             thinking: thinkingLevel,
