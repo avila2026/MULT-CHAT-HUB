@@ -28,19 +28,58 @@ Plataforma onde **múltiplas IAs colaboram como uma equipe** num único ambiente
 ## Pré-requisitos
 
 - Node.js 20+
-- [Ollama](https://ollama.com/download) instalado
-- `ollama serve` rodando em background
-- Modelo baixado: `ollama pull fazendaavila2026/avila` (≈ 2GB, context window 128K)
+- pnpm 9+
+- um backend LLM local ou remoto configurado:
+  - [Ollama](https://ollama.com/download) para uso local (`ollama serve` + `ollama pull ...`)
+  - ou `llama.cpp` com `llama-server` em HTTP/OpenAI-compatible (`http://127.0.0.1:8080/v1`)
+  - ou um endpoint cloud compatível com OpenAI
 
 ## Rodar localmente
 
 ```bash
-npm install
-cp .env.example .env.local        # ajuste OLLAMA_HOST/MODEL se necessário
-npm run dev:all                   # frontend :3001 + backend :3000
+pnpm install
+cp .env.example apps/lite/.env.local
+# ajuste APP_ACTIVATION_SECRET + OLLAMA_HOST/OLLAMA_MODEL ou LLM_BASE_URL/LLM_PROVIDER
+pnpm dev:all
 ```
 
 Abra `http://localhost:3001`.
+
+### Modo 1: Ollama local
+
+```bash
+ollama serve
+ollama pull fazendaavila2026/avila
+# no apps/lite/.env.local
+APP_ACTIVATION_SECRET="sua-chave"
+OLLAMA_HOST="http://localhost:11434"
+OLLAMA_MODEL="fazendaavila2026/avila:latest"
+LLM_PROVIDER="ollama"
+```
+
+### Modo 2: llama.cpp local
+
+```bash
+# exemplo: rodar o servidor do llama.cpp em HTTP
+llama-server --model /caminho/para/model.gguf --port 8080 --ctx-size 4096
+# no apps/lite/.env.local
+APP_ACTIVATION_SECRET="sua-chave"
+LLM_PROVIDER="llamacpp"
+LLM_BASE_URL="http://127.0.0.1:8080/v1"
+LLM_MODEL="local-model"
+```
+
+### Modo 3: cloud / OpenAI-compatible
+
+```bash
+# no apps/lite/.env.local
+APP_ACTIVATION_SECRET="sua-chave"
+OPENAI_API_KEY="sua-chave"
+LLM_PROVIDER="openai"
+# ou use um endpoint compatível via provider UI
+```
+
+> Importante: o projeto não deve depender de `llama.cpp` como pacote npm. O backend aceita esse modelo como servidor HTTP local/compatível em OpenAI, sem instalar nova dependency JS no monorepo.
 
 ## Empacotar como `.exe` Windows (Electron + NSIS)
 

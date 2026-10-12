@@ -47,11 +47,12 @@ const STORAGE_KEY = 'mch:state:v1';
 const MAX_PERSIST_MESSAGES = 100;
 
 const DEFAULT_PROVIDER_CONFIG: Record<ProviderName, ProviderConfig> = {
-  ollama:     { model: 'fazendaavila2026/avila:latest', apiKey: '' },
+  ollama:     { model: 'fazendaavila2026/avila:latest', apiKey: '', baseUrl: 'http://localhost:11434' },
   openai:     { model: 'gpt-4o-mini', apiKey: '' },
   anthropic:  { model: 'claude-haiku-4-5-20251001', apiKey: '' },
   gemini:     { model: 'gemini-2.0-flash-lite', apiKey: '' },
   openrouter: { model: 'openai/gpt-4o-mini', apiKey: '' },
+  llamacpp:   { model: 'local-model', apiKey: '', baseUrl: 'http://127.0.0.1:8080/v1' },
 };
 
 const DEFAULT_MESSAGES: Message[] = [
@@ -457,7 +458,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           const response = await fetch('/api/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getBackendAuthHeaders() },
-            body: JSON.stringify({ input, thinking: thinkingLevel, history: channelHistory, model: cfg.model }),
+            body: JSON.stringify({ input, thinking: thinkingLevel, history: channelHistory, model: cfg.model, baseUrl: cfg.baseUrl, provider: activeProvider }),
           });
 
           if (!response.ok || !response.body) {
@@ -502,6 +503,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             provider: activeProvider,
             model: cfg.model,
             apiKey: cfg.apiKey,
+            baseUrl: cfg.baseUrl,
           }),
         });
         if (response.ok) {

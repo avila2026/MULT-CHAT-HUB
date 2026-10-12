@@ -1,8 +1,9 @@
-export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter';
+export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'llamacpp';
 
 export interface ProviderConfig {
   model: string;
   apiKey: string;
+  baseUrl?: string;
 }
 
 export interface Tool {
