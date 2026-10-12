@@ -99,7 +99,10 @@ class OpenAIAdapter implements ProviderAdapter {
   async chat({ messages, model, maxTokens, apiKey = '', signal }: AdapterChatParams): Promise<string> {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(apiKey ? { Authorization: `****** } : {}),
+      },
       body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
       signal,
     });
@@ -196,7 +199,7 @@ class OpenRouterAdapter implements ProviderAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        ...(apiKey ? { Authorization: `****** } : {}),
         'HTTP-Referer': 'http://localhost',
         'X-Title': 'MULT-CHAT-HUB',
       },
