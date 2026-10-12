@@ -3,7 +3,7 @@
 // estiver com pnpm install completo, este arquivo pode ser substituído
 // por um import direto do pacote.
 
-export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter';
+export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'llamacpp';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -30,6 +30,7 @@ export const DEFAULT_MODELS: Record<ProviderName, string> = {
   anthropic:  'claude-haiku-4-5-20251001',
   gemini:     'gemini-2.0-flash-lite',
   openrouter: 'openai/gpt-4o-mini',
+  llamacpp:   'local-model',
 };
 
 export const PROVIDER_LABELS: Record<ProviderName, string> = {
@@ -38,6 +39,7 @@ export const PROVIDER_LABELS: Record<ProviderName, string> = {
   anthropic:  'Anthropic',
   gemini:     'Gemini',
   openrouter: 'OpenRouter',
+  llamacpp:   'llama.cpp',
 };
 
 export const NEEDS_API_KEY: Record<ProviderName, boolean> = {
@@ -46,9 +48,10 @@ export const NEEDS_API_KEY: Record<ProviderName, boolean> = {
   anthropic:  true,
   gemini:     true,
   openrouter: true,
+  llamacpp:   false,
 };
 
-export const PROVIDER_ORDER: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter'];
+export const PROVIDER_ORDER: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter', 'llamacpp'];
 
 // Anthropic and Gemini require messages to strictly alternate user/assistant
 // and the first non-system message must be 'user'. This merges consecutive
@@ -209,6 +212,45 @@ class OpenRouterAdapter implements ProviderAdapter {
   }
 }
 
+// ── llama.cpp / OpenAI-compatible local server ────────────────────────────────
+
+class LlamaCppAdapter implements ProviderAdapter {
+  readonly name: ProviderName = 'llamacpp';
+
+  async chat({ messages, model, maxTokens, apiKey = '', baseUrl = 'http://127.0.0.1:8080/v1', signal }: AdapterChatParams): Promise<string> {
+    const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (apiKey) headers.Authorization = `******;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: maxTokens,
+        stream: false,
+      }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`llama.cpp ${res.status}: ${text || res.statusText}`);
+    }
+
+    const data = await res.json() as {
+      choices?: { message?: { content?: string } }[];
+      error?: { message?: string };
+    };
+    if (data.error?.message) throw new Error(`llama.cpp: ${data.error.message}`);
+    return data.choices?.[0]?.message?.content ?? 'Sem resposta.';
+  }
+}
+
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createAdapter(provider: ProviderName): ProviderAdapter {
@@ -218,5 +260,6 @@ export function createAdapter(provider: ProviderName): ProviderAdapter {
     case 'anthropic':   return new AnthropicAdapter();
     case 'gemini':      return new GeminiAdapter();
     case 'openrouter':  return new OpenRouterAdapter();
+    case 'llamacpp':    return new LlamaCppAdapter();
   }
 }

@@ -67,6 +67,16 @@ const PROVIDERS: ProviderMeta[] = [
     needsKey: true,
   },
   {
+    id: 'llamacpp',
+    label: 'llama.cpp',
+    short: 'Local',
+    description: 'Servidor local OpenAI-compatible em 127.0.0.1:8080/v1 para modelos GGUF.',
+    accent: 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200',
+    ring: 'ring-cyan-500/40',
+    dot: 'bg-cyan-500',
+    needsKey: false,
+  },
+  {
     id: 'ollama',
     label: 'Ollama',
     short: 'Local',
@@ -98,6 +108,9 @@ function techBadge(provider: string): { label: string; cls: string } {
   }
   if (p.includes('nullclaw') || p.includes('gateway')) {
     return { label: 'Gateway Externo', cls: 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/50 dark:text-violet-200 dark:border-violet-900' };
+  }
+  if (p.includes('llama')) {
+    return { label: 'llama.cpp · Local', cls: 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/50 dark:text-cyan-200 dark:border-cyan-900' };
   }
   // Interno = engine local TypeScript (sem LLM direto)
   return { label: 'Engine Local · TS', cls: 'bg-stone-100 text-stone-700 border-stone-300 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700' };

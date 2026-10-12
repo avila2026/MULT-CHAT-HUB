@@ -3,6 +3,8 @@ import { createAdapter, DEFAULT_MODELS, ProviderName } from '../../src/lib/provi
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'fazendaavila2026/avila:latest';
+const LLM_BASE_URL = (process.env.LLM_BASE_URL || process.env.OLLAMA_HOST || 'http://127.0.0.1:8080/v1').replace(/\/$/, '');
+const LLM_PROVIDER = (process.env.LLM_PROVIDER || 'ollama').toLowerCase();
 
 const OLLAMA_TIMEOUT_MS = 90_000;
 const CLOUD_TIMEOUT_MS = 60_000;
@@ -15,6 +17,7 @@ function envKeyFor(provider: ProviderName): string {
     case 'anthropic':  return process.env.ANTHROPIC_API_KEY ?? '';
     case 'gemini':     return process.env.GEMINI_API_KEY ?? '';
     case 'openrouter': return process.env.OPENROUTER_API_KEY ?? '';
+    case 'llamacpp':   return process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
     case 'ollama':     return '';
   }
 }
@@ -65,8 +68,11 @@ function slog(level: 'INFO' | 'WARN' | 'ERROR', reqId: string, msg: string, extr
 }
 
 function resolveProvider(raw: unknown): ProviderName {
-  const valid: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter'];
-  return valid.includes(raw as ProviderName) ? (raw as ProviderName) : 'ollama';
+  const valid: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter', 'llamacpp'];
+  const provider = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (provider === 'llamacpp' || provider === 'llama.cpp' || provider === 'llama_cpp') return 'llamacpp';
+  if (provider === 'openai_compatible') return 'openai';
+  return valid.includes(provider as ProviderName) ? (provider as ProviderName) : (LLM_PROVIDER === 'llamacpp' ? 'llamacpp' : 'ollama');
 }
 
 export const handleChat = async (req: Request, res: Response) => {
@@ -88,11 +94,11 @@ export const handleChat = async (req: Request, res: Response) => {
     }
 
     const provider = resolveProvider(rawProvider);
-    const defaultModel = provider === 'ollama' ? OLLAMA_MODEL : DEFAULT_MODELS[provider];
+    const defaultModel = provider === 'ollama' ? OLLAMA_MODEL : provider === 'llamacpp' ? (process.env.LLM_MODEL || 'local-model') : DEFAULT_MODELS[provider];
     const model = (typeof modelOverride === 'string' && modelOverride.trim()) ? modelOverride.trim() : defaultModel;
     const apiKey = (typeof reqApiKey === 'string' && reqApiKey.trim()) ? reqApiKey.trim() : envKeyFor(provider);
-    const baseUrl = provider === 'ollama' ? OLLAMA_HOST : undefined;
-    const timeoutMs = provider === 'ollama' ? OLLAMA_TIMEOUT_MS : CLOUD_TIMEOUT_MS;
+    const baseUrl = provider === 'ollama' ? OLLAMA_HOST : provider === 'llamacpp' ? LLM_BASE_URL : undefined;
+    const timeoutMs = provider === 'ollama' || provider === 'llamacpp' ? OLLAMA_TIMEOUT_MS : CLOUD_TIMEOUT_MS;
     const maxTokens = thinking === 'HIGH' ? 2048 : 512;
 
     const rawHistory = (Array.isArray(history) ? history : [])
