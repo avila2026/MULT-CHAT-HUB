@@ -101,7 +101,7 @@ class OpenAIAdapter implements ProviderAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(apiKey ? { Authorization: `****** } : {}),
+        ...(apiKey ? { Authorization: 'Bearer ' + apiKey } : {}),
       },
       body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
       signal,
@@ -199,7 +199,7 @@ class OpenRouterAdapter implements ProviderAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(apiKey ? { Authorization: `****** } : {}),
+        ...(apiKey ? { Authorization: 'Bearer ' + apiKey } : {}),
         'HTTP-Referer': 'http://localhost',
         'X-Title': 'MULT-CHAT-HUB',
       },
@@ -225,7 +225,7 @@ class LlamaCppAdapter implements ProviderAdapter {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (apiKey) headers.Authorization = `******;
+    if (apiKey) headers.Authorization = 'Bearer ' + apiKey;
 
     const res = await fetch(endpoint, {
       method: 'POST',
