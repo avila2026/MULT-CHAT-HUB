@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { createAdapter, DEFAULT_MODELS, ProviderName } from '../../src/lib/providerAdapters.js';
+import { createAdapter, DEFAULT_MODELS, normalizeProviderName, ProviderName } from '../../src/lib/providerAdapters.js';
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'fazendaavila2026/avila:latest';
@@ -13,12 +13,31 @@ const CLOUD_TIMEOUT_MS = 60_000;
 // process.env at module load returns undefined. Resolve per-request instead.
 function envKeyFor(provider: ProviderName): string {
   switch (provider) {
-    case 'openai':     return process.env.OPENAI_API_KEY ?? '';
-    case 'anthropic':  return process.env.ANTHROPIC_API_KEY ?? '';
-    case 'gemini':     return process.env.GEMINI_API_KEY ?? '';
-    case 'openrouter': return process.env.OPENROUTER_API_KEY ?? '';
-    case 'llamacpp':   return process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
-    case 'ollama':     return '';
+    case 'openai':
+    case 'codex':
+    case 'opencode':
+    case 'cli':
+    case 'powershell':
+      return process.env.OPENAI_API_KEY ?? '';
+    case 'anthropic':
+    case 'claude_code':
+      return process.env.ANTHROPIC_API_KEY ?? '';
+    case 'gemini':
+      return process.env.GEMINI_API_KEY ?? '';
+    case 'openrouter':
+    case 'router9':
+      return process.env.OPENROUTER_API_KEY ?? '';
+    case 'llamacpp':
+      return process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+    case 'grok':
+    case 'grok_bot':
+      return process.env.GROK_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+    case 'hermes':
+      return process.env.HERMES_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+    case 'deepseek':
+      return process.env.DEEPSEEK_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+    case 'ollama':
+      return '';
   }
 }
 
@@ -68,10 +87,34 @@ function slog(level: 'INFO' | 'WARN' | 'ERROR', reqId: string, msg: string, extr
 }
 
 function resolveProvider(raw: unknown): ProviderName {
-  const valid: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter', 'llamacpp'];
+  const valid: ProviderName[] = [
+    'ollama',
+    'openai',
+    'anthropic',
+    'gemini',
+    'openrouter',
+    'llamacpp',
+    'cli',
+    'powershell',
+    'grok',
+    'grok_bot',
+    'codex',
+    'claude_code',
+    'hermes',
+    'opencode',
+    'router9',
+    'deepseek',
+  ];
+  const alias = normalizeProviderName(raw);
+  if (alias && valid.includes(alias)) return alias;
   const provider = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (provider === 'llamacpp' || provider === 'llama.cpp' || provider === 'llama_cpp') return 'llamacpp';
   if (provider === 'openai_compatible') return 'openai';
+  if (provider === 'grok bot' || provider === 'grok-bot' || provider === 'grokbot') return 'grok_bot';
+  if (provider === 'claude code' || provider === 'claude-code') return 'claude_code';
+  if (provider === '9router' || provider === '9-router' || provider === '9 router') return 'router9';
+  if (provider === 'opencode' || provider === 'open code' || provider === 'open-code') return 'opencode';
+  if (provider === 'terminal' || provider === 'power shell' || provider === 'powershell') return 'powershell';
   return valid.includes(provider as ProviderName) ? (provider as ProviderName) : (LLM_PROVIDER === 'llamacpp' ? 'llamacpp' : 'ollama');
 }
 
