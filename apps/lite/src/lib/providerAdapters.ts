@@ -3,7 +3,23 @@
 // estiver com pnpm install completo, este arquivo pode ser substituído
 // por um import direto do pacote.
 
-export type ProviderName = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'llamacpp';
+export type ProviderName =
+  | 'ollama'
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'openrouter'
+  | 'llamacpp'
+  | 'cli'
+  | 'powershell'
+  | 'grok'
+  | 'grok_bot'
+  | 'codex'
+  | 'claude_code'
+  | 'hermes'
+  | 'opencode'
+  | 'router9'
+  | 'deepseek';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -24,6 +40,57 @@ export interface ProviderAdapter {
   chat(params: AdapterChatParams): Promise<string>;
 }
 
+export const PROVIDER_ALIASES: Record<string, ProviderName> = {
+  cli: 'cli',
+  terminal: 'cli',
+  'power shell': 'powershell',
+  powershell: 'powershell',
+  'grok bot': 'grok_bot',
+  'grok-bot': 'grok_bot',
+  'grokbot': 'grok_bot',
+  grok: 'grok',
+  codex: 'codex',
+  'claude code': 'claude_code',
+  'claude-code': 'claude_code',
+  hermes: 'hermes',
+  opencode: 'opencode',
+  'open code': 'opencode',
+  'open-code': 'opencode',
+  '9router': 'router9',
+  '9-router': 'router9',
+  '9 router': 'router9',
+  deepseek: 'deepseek',
+  ollama: 'ollama',
+  openai: 'openai',
+  anthropic: 'anthropic',
+  gemini: 'gemini',
+  openrouter: 'openrouter',
+  llamacpp: 'llamacpp',
+  'llama cpp': 'llamacpp',
+} as const;
+
+export function normalizeProviderName(raw: unknown): ProviderName | null {
+  if (typeof raw !== 'string') return null;
+  const compact = raw.trim().toLowerCase().replace(/[_./-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!compact) return null;
+  if (compact in PROVIDER_ALIASES) return PROVIDER_ALIASES[compact];
+  if (compact.includes('grok') && compact.includes('bot')) return 'grok_bot';
+  if (compact.includes('grok')) return 'grok';
+  if (compact.includes('claude') && compact.includes('code')) return 'claude_code';
+  if (compact.includes('claude')) return 'anthropic';
+  if (compact.includes('opencode') || compact.includes('open code')) return 'opencode';
+  if (compact.includes('9router') || compact.includes('9 router')) return 'router9';
+  if (compact.includes('deepseek')) return 'deepseek';
+  if (compact.includes('hermes')) return 'hermes';
+  if (compact.includes('ollama')) return 'ollama';
+  if (compact.includes('llama')) return 'llamacpp';
+  if (compact.includes('power') || compact.includes('terminal')) return 'powershell';
+  if (compact.includes('cli')) return 'cli';
+  if (compact.includes('openai')) return 'openai';
+  if (compact.includes('openrouter')) return 'openrouter';
+  return null;
+}
+
 export const DEFAULT_MODELS: Record<ProviderName, string> = {
   ollama:     'fazendaavila2026/avila:latest',
   openai:     'gpt-4o-mini',
@@ -31,27 +98,74 @@ export const DEFAULT_MODELS: Record<ProviderName, string> = {
   gemini:     'gemini-2.0-flash-lite',
   openrouter: 'openai/gpt-4o-mini',
   llamacpp:   'local-model',
+  cli:        'gpt-4o-mini',
+  powershell: 'gpt-4o-mini',
+  grok:       'grok-2-latest',
+  grok_bot:   'grok-2-latest',
+  codex:      'gpt-4o-mini',
+  claude_code: 'claude-3-5-sonnet-latest',
+  hermes:     'hermes-3-llama-3.1-70b',
+  opencode:   'gpt-4o-mini',
+  router9:    'openai/gpt-4o-mini',
+  deepseek:   'deepseek-chat',
 };
 
 export const PROVIDER_LABELS: Record<ProviderName, string> = {
-  ollama:     'Ollama',
-  openai:     'OpenAI',
-  anthropic:  'Anthropic',
-  gemini:     'Gemini',
-  openrouter: 'OpenRouter',
-  llamacpp:   'llama.cpp',
+  ollama:      'Ollama',
+  openai:      'OpenAI',
+  anthropic:   'Anthropic',
+  gemini:      'Gemini',
+  openrouter:  'OpenRouter',
+  llamacpp:    'llama.cpp',
+  cli:         'PowerShell CLI',
+  powershell:  'PowerShell',
+  grok:        'Grok',
+  grok_bot:    'Grok Bot',
+  codex:       'Codex',
+  claude_code: 'Claude Code',
+  hermes:      'Hermes',
+  opencode:    'OpenCode',
+  router9:     '9Router',
+  deepseek:    'DeepSeek',
 };
 
 export const NEEDS_API_KEY: Record<ProviderName, boolean> = {
-  ollama:     false,
-  openai:     true,
-  anthropic:  true,
-  gemini:     true,
-  openrouter: true,
-  llamacpp:   false,
+  ollama:      false,
+  openai:      true,
+  anthropic:    true,
+  gemini:      true,
+  openrouter:  true,
+  llamacpp:    false,
+  cli:         false,
+  powershell:  false,
+  grok:        true,
+  grok_bot:    true,
+  codex:       true,
+  claude_code: true,
+  hermes:      true,
+  opencode:    true,
+  router9:     true,
+  deepseek:    true,
 };
 
-export const PROVIDER_ORDER: ProviderName[] = ['ollama', 'openai', 'anthropic', 'gemini', 'openrouter', 'llamacpp'];
+export const PROVIDER_ORDER: ProviderName[] = [
+  'ollama',
+  'openai',
+  'anthropic',
+  'gemini',
+  'openrouter',
+  'llamacpp',
+  'cli',
+  'powershell',
+  'grok',
+  'grok_bot',
+  'codex',
+  'claude_code',
+  'hermes',
+  'opencode',
+  'router9',
+  'deepseek',
+];
 
 // Anthropic and Gemini require messages to strictly alternate user/assistant
 // and the first non-system message must be 'user'. This merges consecutive
@@ -96,8 +210,9 @@ class OllamaAdapter implements ProviderAdapter {
 class OpenAIAdapter implements ProviderAdapter {
   readonly name: ProviderName = 'openai';
 
-  async chat({ messages, model, maxTokens, apiKey = '', signal }: AdapterChatParams): Promise<string> {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  async chat({ messages, model, maxTokens, apiKey = '', baseUrl, signal }: AdapterChatParams): Promise<string> {
+    const endpoint = `${(baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '')}/chat/completions`;
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -264,5 +379,16 @@ export function createAdapter(provider: ProviderName): ProviderAdapter {
     case 'gemini':      return new GeminiAdapter();
     case 'openrouter':  return new OpenRouterAdapter();
     case 'llamacpp':    return new LlamaCppAdapter();
+    case 'claude_code': return new AnthropicAdapter();
+    case 'cli':
+    case 'powershell':
+    case 'grok':
+    case 'grok_bot':
+    case 'codex':
+    case 'hermes':
+    case 'opencode':
+    case 'router9':
+    case 'deepseek':
+      return new OpenAIAdapter();
   }
 }

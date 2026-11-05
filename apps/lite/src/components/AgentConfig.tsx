@@ -12,6 +12,14 @@ const TECH_OPTIONS = [
   'Webhook HTTP',
   'Gateway Externo',
   'Engine Local · TS',
+  'PowerShell CLI',
+  'Grok · xAI',
+  'Codex · OpenAI',
+  'Claude Code',
+  'Hermes',
+  'OpenCode',
+  '9Router',
+  'DeepSeek',
 ] as const;
 
 type ProviderMeta = {
@@ -86,6 +94,106 @@ const PROVIDERS: ProviderMeta[] = [
     dot: 'bg-stone-500',
     needsKey: false,
   },
+  {
+    id: 'grok',
+    label: 'Grok',
+    short: 'xAI',
+    description: 'xAI Grok via API compatível com OpenAI / gateway de IA.',
+    accent: 'bg-fuchsia-50 dark:bg-fuchsia-950/40 border-fuchsia-300 dark:border-fuchsia-800 text-fuchsia-900 dark:text-fuchsia-200',
+    ring: 'ring-fuchsia-500/40',
+    dot: 'bg-fuchsia-500',
+    needsKey: true,
+  },
+  {
+    id: 'grok_bot',
+    label: 'Grok Bot',
+    short: 'Bot',
+    description: 'Versão de bot / assistant do Grok, acessível por endpoint compatível OpenAI.',
+    accent: 'bg-pink-50 dark:bg-pink-950/40 border-pink-300 dark:border-pink-800 text-pink-900 dark:text-pink-200',
+    ring: 'ring-pink-500/40',
+    dot: 'bg-pink-500',
+    needsKey: true,
+  },
+  {
+    id: 'codex',
+    label: 'Codex',
+    short: 'CLI',
+    description: 'Codex via endpoint OpenAI-compatible para execução em terminal.',
+    accent: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200',
+    ring: 'ring-emerald-500/40',
+    dot: 'bg-emerald-500',
+    needsKey: true,
+  },
+  {
+    id: 'cli',
+    label: 'CLI / Terminal',
+    short: 'Shell',
+    description: 'Modelos acessados por CLIs de terminal, incluindo PowerShell, Codex e gateways locais.',
+    accent: 'bg-slate-50 dark:bg-slate-950/40 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200',
+    ring: 'ring-slate-500/40',
+    dot: 'bg-slate-500',
+    needsKey: false,
+  },
+  {
+    id: 'claude_code',
+    label: 'Claude Code',
+    short: 'Terminal',
+    description: 'Agente de terminal baseado em Claude/Anthropic.',
+    accent: 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800 text-orange-900 dark:text-orange-200',
+    ring: 'ring-orange-500/40',
+    dot: 'bg-orange-500',
+    needsKey: true,
+  },
+  {
+    id: 'powershell',
+    label: 'PowerShell',
+    short: 'CLI',
+    description: 'Shell de Windows / terminal para execução local com modelos via gateway.',
+    accent: 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 dark:border-sky-800 text-sky-900 dark:text-sky-200',
+    ring: 'ring-sky-500/40',
+    dot: 'bg-sky-500',
+    needsKey: false,
+  },
+  {
+    id: 'hermes',
+    label: 'Hermes',
+    short: 'Gateway',
+    description: 'Modelos Hermes/LLM compatíveis em endpoint OpenAI-style.',
+    accent: 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200',
+    ring: 'ring-purple-500/40',
+    dot: 'bg-purple-500',
+    needsKey: true,
+  },
+  {
+    id: 'opencode',
+    label: 'OpenCode',
+    short: 'OpenAI',
+    description: 'OpenCode e endpoints locais/compatíveis com OpenAI.',
+    accent: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200',
+    ring: 'ring-indigo-500/40',
+    dot: 'bg-indigo-500',
+    needsKey: true,
+  },
+  {
+    id: 'router9',
+    label: '9Router',
+    short: 'Router',
+    description: '9Router para rotear vários motores no terminal ou gateway local.',
+    accent: 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200',
+    ring: 'ring-rose-500/40',
+    dot: 'bg-rose-500',
+    needsKey: true,
+  },
+  {
+    id: 'deepseek',
+    label: 'DeepSeek',
+    short: 'Chat',
+    description: 'DeepSeek Chat via API compatível com OpenAI.',
+    accent: 'bg-teal-50 dark:bg-teal-950/40 border-teal-300 dark:border-teal-800 text-teal-900 dark:text-teal-200',
+    ring: 'ring-teal-500/40',
+    dot: 'bg-teal-500',
+    needsKey: true,
+  },
 ];
 
 // Mapeia o `provider` textual de cada agente para um rótulo + cor de marca
@@ -108,6 +216,24 @@ function techBadge(provider: string): { label: string; cls: string } {
   }
   if (p.includes('nullclaw') || p.includes('gateway')) {
     return { label: 'Gateway Externo', cls: 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/50 dark:text-violet-200 dark:border-violet-900' };
+  }
+  if (p.includes('grok')) {
+    return { label: 'Grok · xAI', cls: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-950/50 dark:text-fuchsia-200 dark:border-fuchsia-900' };
+  }
+  if (p.includes('claude code') || p.includes('claude_code')) {
+    return { label: 'Claude Code', cls: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-200 dark:border-orange-900' };
+  }
+  if (p.includes('deepseek')) {
+    return { label: 'DeepSeek', cls: 'bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/50 dark:text-teal-200 dark:border-teal-900' };
+  }
+  if (p.includes('router9') || p.includes('9router')) {
+    return { label: '9Router', cls: 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:border-rose-900' };
+  }
+  if (p.includes('opencode') || p.includes('open code')) {
+    return { label: 'OpenCode', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-200 dark:border-indigo-900' };
+  }
+  if (p.includes('power') || p.includes('terminal')) {
+    return { label: 'PowerShell CLI', cls: 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:border-sky-900' };
   }
   if (p.includes('llama')) {
     return { label: 'llama.cpp · Local', cls: 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/50 dark:text-cyan-200 dark:border-cyan-900' };

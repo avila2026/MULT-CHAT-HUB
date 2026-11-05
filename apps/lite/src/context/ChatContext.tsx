@@ -47,12 +47,22 @@ const STORAGE_KEY = 'mch:state:v1';
 const MAX_PERSIST_MESSAGES = 100;
 
 const DEFAULT_PROVIDER_CONFIG: Record<ProviderName, ProviderConfig> = {
-  ollama:     { model: 'fazendaavila2026/avila:latest', apiKey: '', baseUrl: 'http://localhost:11434' },
-  openai:     { model: 'gpt-4o-mini', apiKey: '' },
-  anthropic:  { model: 'claude-haiku-4-5-20251001', apiKey: '' },
-  gemini:     { model: 'gemini-2.0-flash-lite', apiKey: '' },
-  openrouter: { model: 'openai/gpt-4o-mini', apiKey: '' },
-  llamacpp:   { model: 'local-model', apiKey: '', baseUrl: 'http://127.0.0.1:8080/v1' },
+  ollama:      { model: 'fazendaavila2026/avila:latest', apiKey: '', baseUrl: 'http://localhost:11434' },
+  openai:      { model: 'gpt-4o-mini', apiKey: '' },
+  anthropic:   { model: 'claude-haiku-4-5-20251001', apiKey: '' },
+  gemini:      { model: 'gemini-2.0-flash-lite', apiKey: '' },
+  openrouter:  { model: 'openai/gpt-4o-mini', apiKey: '', baseUrl: 'https://openrouter.ai/api/v1' },
+  llamacpp:    { model: 'local-model', apiKey: '', baseUrl: 'http://127.0.0.1:8080/v1' },
+  cli:         { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'http://localhost:11434' },
+  powershell:  { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'http://localhost:11434' },
+  grok:        { model: 'grok-2-latest', apiKey: '', baseUrl: 'https://api.x.ai/v1' },
+  grok_bot:    { model: 'grok-2-latest', apiKey: '', baseUrl: 'https://api.x.ai/v1' },
+  codex:       { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1' },
+  claude_code: { model: 'claude-3-5-sonnet-latest', apiKey: '', baseUrl: 'https://api.anthropic.com' },
+  hermes:      { model: 'hermes-3-llama-3.1-70b', apiKey: '', baseUrl: 'https://api.openai.com/v1' },
+  opencode:    { model: 'gpt-4o-mini', apiKey: '', baseUrl: 'https://api.openai.com/v1' },
+  router9:     { model: 'openai/gpt-4o-mini', apiKey: '', baseUrl: 'https://openrouter.ai/api/v1' },
+  deepseek:    { model: 'deepseek-chat', apiKey: '', baseUrl: 'https://api.deepseek.com/v1' },
 };
 
 const DEFAULT_MESSAGES: Message[] = [
